@@ -1,45 +1,26 @@
 import { useSelector } from "react-redux";
+import { useState } from "react";
+import Sidebar from "../components/UI/sidebar";
+import Navbar from "../components/UI/Navbar";
 
 const Documents = () => {
   const user = useSelector((state) => state.auth.user);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  
   if (!user) return null;
 
-  const initials = user.name?.split(" ").map((n) => n[0])
-    .join("")
-    .toUpperCase();
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      {/* Top Navbar */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white shadow">
-        <h1 className="text-2xl font-semibold text-slate-800">Documents</h1>
+    <div className="flex min-h-screen overflow-hidden bg-slate-50">
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed((prev) => !prev)}
+      />
 
-        {/* Profile Badge */}
-        <div className="flex items-center gap-3 cursor-pointer group">
-          
-          {/* Avatar */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500 text-white font-semibold">
-            {initials}
-          </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Navbar user={user} />
 
-          {/* Name + Email (hover reveal optional) */}
-          <div className="hidden flex-col group-hover:flex absolute right-6 top-16 bg-white shadow-lg rounded-lg px-4 py-2">
-            <span className="text-sm font-medium text-slate-800">
-              {user.name}
-            </span>
-            <span className="text-xs text-slate-500">
-              {user.email}
-            </span>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Page Content */}
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        {/* Your main content */}
+        <main className="flex-1 overflow-x-auto px-4 py-10">{/* Page Content */}</main>
       </div>
     </div>
   );

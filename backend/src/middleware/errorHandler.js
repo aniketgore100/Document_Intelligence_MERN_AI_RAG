@@ -1,4 +1,5 @@
-import { logger } from '../utils/logger.js';
+
+import logger from '../utils/logger.js';
 
 export const notFound = (req, res, next) => {
   const err = new Error(`Route not found: ${req.originalUrl}`);

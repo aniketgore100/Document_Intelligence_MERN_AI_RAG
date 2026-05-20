@@ -6,31 +6,37 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 import connectDB from './src/config/db.js';
-import { logger } from './src/utils/logger.js';
 import authRoutes from './src/routes/authRoutes.js';
+import organizationRoutes from './src/routes/organizationRoutes.js';
+import roleRoutes from './src/routes/roleRoutes.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
+import logger from './src/utils/logger.js';
 import dotenv from 'dotenv';
 dotenv.config();
+
+
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 
-
-app.use(helmet());
+app.use(express.json({ limit: '2mb' }));
 app.use(
   cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
   }),
 );
-app.use(express.json({ limit: '2mb' }));
+
+app.options('*', cors());
+app.use(helmet());
+
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max: 30,
+  max: 300,
   message: { message: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -39,6 +45,8 @@ const authLimiter = rateLimit({
 // ── Routes ─────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', ts: new Date() }));
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.use('/api/roles', roleRoutes);
 
 // ── Error handling ─────────────────────────────────────────────────────────
 app.use(notFound);

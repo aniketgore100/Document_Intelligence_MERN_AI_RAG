@@ -1,40 +1,19 @@
-import axios from 'axios';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-export const api = axios.create({
-  baseURL,
-  timeout: 15000,
-});
-
-let storeRef = null;
-
-export const setupApiInterceptors = (store) => {
-  storeRef = store;
-
-  api.interceptors.request.use(
-    (config) => {
-      const token = storeRef?.getState()?.auth?.token;
+export const apiSlice = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl,
+    prepareHeaders: (headers, { getState }) => {
+      const token = getState()?.auth?.token;
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        headers.set('authorization', `Bearer ${token}`);
       }
-      return config;
+      return headers;
     },
-    (error) => Promise.reject(error),
-  );
-
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error?.response?.status === 401 && storeRef) {
-        storeRef.dispatch({ type: 'auth/logout' });
-      }
-      return Promise.reject(error);
-    },
-  );
-};
-
-export const apiRequest = async (request) => {
-  const response = await request;
-  return response.data;
-};
+  }),
+  tagTypes: ['Auth'],
+  endpoints: () => ({}),
+});

@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 60,
     },
+
+
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -18,16 +20,22 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
     },
-    role:{
-      type:String,
-      required :true
-    },
+
+
+    role: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Role"
+    }, 
+
+
     password: {
       type: String,
       required: [true, 'Password is required'],
       minlength: 6,
       select: false,
     },
+
+
     color: {
       type: String,
       default: () => {
@@ -39,6 +47,9 @@ const userSchema = new mongoose.Schema(
       },
     },
   },
+
+
+  
   { timestamps: true },
 );
 
@@ -57,7 +68,9 @@ userSchema.methods.toPublic = function () {
     id: this._id,
     name: this.name,
     email: this.email,
+    role: this.role,
     color: this.color,
+    roleName: this.roleName || " ",
   };
 };
 

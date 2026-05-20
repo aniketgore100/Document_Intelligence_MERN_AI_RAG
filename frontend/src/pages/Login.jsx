@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { clearAuthError, login } from '../features/auth/authSlice';
+import { useLoginMutation } from '../features/auth/authApiSlice';
 
 
 const Login = () => {
-  const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const [login, { isLoading, error }] = useLoginMutation();
   const [form, setForm] = useState({ email: '', password: '' });
+
+
   const onSubmit = async (event) => {
     event.preventDefault();
-    dispatch(clearAuthError());
-    await dispatch(login(form));
+    await login(form);
   };
+  
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md items-center px-4">
@@ -38,24 +38,21 @@ const Login = () => {
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
           />
 
-          {/* <ErrorMessage message={error} /> */}
+          {error?.data?.message && (
+            <p className="text-sm text-red-600">{error.data.message}</p>
+          )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             className="w-full rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
           >
-            {loading ? 'Signing in...' : 'Login'}
+            {isLoading ? 'Signing in...' : 'Login'}
           </button>
           {/* {loading && <LoadingSpinner text="Authenticating" />} */}
         </form>
 
-        <p className="mt-4 text-sm text-slate-600">
-          New here?{' '}
-          <Link to="/register" className="font-medium text-slate-800 underline">
-            Create an account
-          </Link>
-        </p>
+        
       </div>
     </div>
   );
