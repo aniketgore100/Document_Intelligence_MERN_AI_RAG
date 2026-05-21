@@ -1,7 +1,7 @@
 export const ACTIONS = Object.freeze({
-
   ORGANIZATION: Object.freeze({
     CREATE: 'organization:create',
+    READ: 'organization:read',
   }),
 
   ROLE: Object.freeze({
@@ -9,11 +9,11 @@ export const ACTIONS = Object.freeze({
     READ: 'role:read',
     UPDATE: 'role:update',
   }),
-  
+
   PERMISSION: Object.freeze({
     CREATE: 'permission:create',
     UPDATE: 'permission:update',
     DELETE: 'permission:delete',
-    READ : 'permission:read',
+    READ: 'permission:read',
   }),
 });

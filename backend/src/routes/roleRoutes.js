@@ -45,6 +45,6 @@ router.patch(
   updateRolePermissions
 );
 
-router.get('/get-roles', protect, authorize(ACTIONS.ROLE.READ), getRoles);
+router.get('/roles', protect, authorize(ACTIONS.ROLE.READ), getRoles);
 
 export default router;

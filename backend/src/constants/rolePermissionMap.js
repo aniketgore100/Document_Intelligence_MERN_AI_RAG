@@ -1,0 +1,26 @@
+import { ACTIONS } from "./actions.js";
+import { ROLES } from "./roles.js";
+
+export const ROLE_PERMISSION_MAP = Object.freeze({
+  [ROLES.GLOBAL_ADMIN]: Object.freeze([
+    ACTIONS.ORGANIZATION.CREATE,
+    ACTIONS.ORGANIZATION.READ,
+    ACTIONS.ROLE.CREATE,
+    ACTIONS.ROLE.READ,
+    ACTIONS.ROLE.UPDATE,
+    ACTIONS.PERMISSION.CREATE,
+    ACTIONS.PERMISSION.READ,
+    ACTIONS.PERMISSION.UPDATE,
+    ACTIONS.PERMISSION.DELETE,
+  ]),
+  [ROLES.ORG_ADMIN]: Object.freeze([
+    ACTIONS.ORGANIZATION.READ,
+    ACTIONS.ORGANIZATION.CREATE
+  ]),
+  [ROLES.DEPT_ADMIN]: Object.freeze([]),
+  [ROLES.USER]: Object.freeze([]),
+});
+
+export const getAllowedPermissionsForRole = (roleName) => {
+  return ROLE_PERMISSION_MAP[roleName] || [];
+};

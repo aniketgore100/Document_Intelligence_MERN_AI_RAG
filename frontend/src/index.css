@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg: 246 247 251;
+  --surface: 255 255 255;
+  --surface-elevated: 255 255 255;
+  --text: 17 24 39;
+  --muted: 100 116 139;
+  --border: 226 232 240;
+  --accent: 37 99 235;
+  --accent-soft: 219 234 254;
+}
+
+.dark {
+  --bg: 9 12 18;
+  --surface: 17 24 39;
+  --surface-elevated: 15 23 42;
+  --text: 226 232 240;
+  --muted: 148 163 184;
+  --border: 51 65 85;
+  --accent: 96 165 250;
+  --accent-soft: 30 41 59;
+}
+
+* {
+  border-color: rgb(var(--border));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
-  @apply bg-slate-100 text-slate-900;
+  @apply antialiased;
+  color: rgb(var(--text));
+  background: rgb(var(--bg));
+}
+
+@layer components {
+  .glass {
+    background: rgba(var(--surface), 0.78);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--border), 0.7);
+    box-shadow: none;
+  }
+
+  .surface {
+    background: rgb(var(--surface));
+    border: 1px solid rgba(var(--border), 0.85);
+    box-shadow: none;
+  }
+
+  .title-xl {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  .title-lg {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
+  .muted {
+    color: rgb(var(--muted));
+  }
 }

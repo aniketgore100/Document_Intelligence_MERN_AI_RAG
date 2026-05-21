@@ -2,18 +2,7 @@ import { AuthRepository } from "../repositories/authRepository.js";
 import { RoleRepository } from "../repositories/roleRepository.js";
 import { signToken } from "../utils/jwt.js";
 import { ROLES } from "../constants/roles.js";
-import { ACTIONS } from "../constants/actions.js";
-
-const DEFAULT_GLOBAL_ADMIN_PERMISSIONS = Object.freeze([
-  ACTIONS.ROLE.CREATE,
-  ACTIONS.ROLE.UPDATE,
-  ACTIONS.ROLE.READ,
-  ACTIONS.PERMISSION.CREATE,
-  ACTIONS.PERMISSION.UPDATE,
-  ACTIONS.PERMISSION.DELETE,
-  ACTIONS.PERMISSION.READ,
-  ACTIONS.ORGANIZATION.CREATE,
-]);
+import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
 
 export class AuthService {
   constructor({
@@ -52,12 +41,12 @@ export class AuthService {
         if (!roleDoc) {
           roleDoc = await this.roleRepository.create({
             name: ROLES.GLOBAL_ADMIN,
-            permissions: [...DEFAULT_GLOBAL_ADMIN_PERMISSIONS],
+            permissions: [...getAllowedPermissionsForRole(ROLES.GLOBAL_ADMIN)],
           });
         } else {
           const mergedPermissions = this.normalizePermissions([
             ...(roleDoc.permissions || []),
-            ...DEFAULT_GLOBAL_ADMIN_PERMISSIONS,
+            ...getAllowedPermissionsForRole(ROLES.GLOBAL_ADMIN),
           ]);
 
           if (mergedPermissions.length !== (roleDoc.permissions || []).length) {
