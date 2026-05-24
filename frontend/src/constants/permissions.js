@@ -38,7 +38,6 @@ export const ROLE_PERMISSION_MAP = Object.freeze({
   ]),
   [ROLES.ORG_ADMIN]: Object.freeze([
     PERMISSIONS.ORGANIZATION.READ,
-    PERMISSIONS.ORGANIZATION.CREATE
   ]),
   [ROLES.DEPT_ADMIN]: Object.freeze([]),
   [ROLES.USER]: Object.freeze([]),

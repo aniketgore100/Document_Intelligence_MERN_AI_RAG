@@ -7,6 +7,7 @@ import RolesList from './pages/RoleList';
 import AppLayout from './components/UI/AppLayout';
 import Home from './pages/Home';
 import { ROLES } from './constants/roles';
+import AcceptInvite from './pages/AcceptInvite';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -15,6 +16,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Navigate to={token ? '/home' : '/login'} replace />} />
       <Route path="/login" element={token ? <Navigate to="/home" replace /> : <Login />} />
+      <Route path="/invite/accept" element={<AcceptInvite />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

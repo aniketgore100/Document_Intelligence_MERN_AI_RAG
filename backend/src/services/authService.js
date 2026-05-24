@@ -5,8 +5,9 @@ import { ROLES } from "../constants/roles.js";
 import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
 
 export class AuthService {
-  constructor({
-    authRepository = new AuthRepository(),
+  
+  constructor({ 
+    authRepository = new AuthRepository(), 
     roleRepository = new RoleRepository(),
   } = {}) {
     this.authRepository = authRepository;

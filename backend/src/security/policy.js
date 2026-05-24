@@ -9,7 +9,6 @@ export const can = ({ roleName, permissions }, action) => {
     };
   }
 
-  // Hard guard: role management actions are reserved for global admin only.
   const globalAdminOnlyActions = new Set([
     ACTIONS.ROLE.CREATE,
     ACTIONS.ROLE.UPDATE,

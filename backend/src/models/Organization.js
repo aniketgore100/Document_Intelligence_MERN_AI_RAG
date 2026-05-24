@@ -36,6 +36,10 @@ const organizationSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
+    Owner : {
+       type : mongoose.Schema.Types.ObjectId,
+       ref : 'User',
+    },
   },
   {
     timestamps: true,
@@ -57,6 +61,8 @@ organizationSchema.methods.toPublic = function () {
     slug: this.slug,
     status: this.status,
     createdBy: this.createdBy,
+    Owner: this.Owner,
+    metadata: this.metadata ? Object.fromEntries(this.metadata) : {},
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

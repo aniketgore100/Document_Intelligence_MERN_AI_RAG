@@ -4,16 +4,39 @@ const organizationService = new OrganizationService();
 
 export const createOrganization = async (req, res, next) => {
   try {
-    const { name } = req.body;
-    const org = await organizationService.createOrganization({
+    const { name, status, metadata, Owner } = req.body;
+    const result = await organizationService.createOrganization({
       name,
+      status,
+      metadata,
+      Owner,
       createdBy: req.user?.id || req.user?._id || null,
     });
 
     return res.status(201).json({
-      organization: org.toPublic(),
+      organization: result.organization.toPublic(),
+      ...(result.invite ? { invite: result.invite } : {}),
     });
   } catch (err) {
     next(err);
   }
 };
+
+
+export const getOrganizations = async(req, res, next) => {
+  try{
+    const { page, limit, status } = req.query;
+    const result = await organizationService.getOrganizationsPaginated({
+      page,
+      limit,
+      status,
+    });
+
+    return res.status(200).json({
+      organizations: result.organizations,
+      pagination: result.pagination,
+    });
+  }catch(error){
+    next(error);
+  }
+}

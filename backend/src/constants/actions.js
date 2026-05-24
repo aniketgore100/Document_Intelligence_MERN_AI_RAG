@@ -10,6 +10,13 @@ export const ACTIONS = Object.freeze({
     UPDATE: 'role:update',
   }),
 
+  USER : Object.freeze({
+    CREATE : 'user:create',
+    READ : 'user:read',
+    DELETE : 'user:delete',
+    UPDATE : 'user:update'
+  }),
+  
   PERMISSION: Object.freeze({
     CREATE: 'permission:create',
     UPDATE: 'permission:update',

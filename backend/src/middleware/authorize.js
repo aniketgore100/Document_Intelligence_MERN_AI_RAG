@@ -9,10 +9,7 @@ export const authorize = (action) => {
                 message : "unauthorized"
             });
         }
-        console.log("req.auth :: ", req.auth);
-        console.log("action :: ", action);
 
-        
         const decision = can(req.auth, action);
         if(!decision.allowed){
             return res.status(403).json({

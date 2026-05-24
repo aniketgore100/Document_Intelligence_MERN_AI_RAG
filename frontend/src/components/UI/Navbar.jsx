@@ -2,11 +2,19 @@ import { ChevronRight, Home, Layers3, Plus, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 import { formatRoleName } from "../../utils/formatRoleName";
+import { ROLES } from "../../constants/roles";
 
 const toTitle = (segment) =>
   segment
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const getHomeHeading = (roleName) => {
+  if (roleName === ROLES.GLOBAL_ADMIN) return "Global Admin Dashboard";
+  if (roleName === ROLES.ORG_ADMIN) return "Organization Admin Dashboard";
+  if (roleName === ROLES.DEPT_ADMIN) return "Department Admin Dashboard";
+  return "User Dashboard";
+};
 
 const Navbar = ({ user }) => {
   const location = useLocation();
@@ -18,6 +26,7 @@ const Navbar = ({ user }) => {
 
   const segments = location.pathname.split("/").filter(Boolean);
   const isRolesPage = location.pathname === "/roles";
+  const isGlobalAdminHome = location.pathname === "/home" && user?.roleName === ROLES.GLOBAL_ADMIN;
 
   const defaultCrumbs = segments.map((seg, idx) => {
     const path = `/${segments.slice(0, idx + 1).join("/")}`;
@@ -28,7 +37,12 @@ const Navbar = ({ user }) => {
     };
   });
 
-  const pageName = defaultCrumbs.length ? defaultCrumbs[defaultCrumbs.length - 1].label : "Workspace";
+  const isHomePage = location.pathname === "/home";
+  const pageName = isHomePage
+    ? getHomeHeading(user?.roleName)
+    : defaultCrumbs.length
+      ? defaultCrumbs[defaultCrumbs.length - 1].label
+      : "Workspace";
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-transparent px-2 py-2 md:px-3 dark:border-slate-700/40">
@@ -92,6 +106,59 @@ const Navbar = ({ user }) => {
             >
               <Plus size={13} />
               Create Role
+            </button>
+          </div>
+        </div>
+      ) : isGlobalAdminHome ? (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">
+                Global Admin Home
+              </h1>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Manage organizations and users from here.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle />
+
+              <div className="group relative flex items-center gap-2 px-1 py-0.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white">
+                  {initials}
+                </div>
+                <div className="hidden pr-1 md:block">
+                  <p className="text-sm font-medium leading-none text-slate-800 dark:text-slate-100">{user?.name}</p>
+                  <p className="mt-0.5 text-xs muted">{formatRoleName(user?.roleName) || "User"}</p>
+                </div>
+
+                <div className="surface absolute right-0 top-10 hidden min-w-56 rounded-xl px-3 py-2 group-hover:block">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{user?.name}</p>
+                  <p className="text-xs muted">{user?.email}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full border-t border-slate-200/80 dark:border-slate-700/80" />
+
+          <div className="flex items-center justify-between gap-3 pr-1 md:pr-3">
+            <nav className="flex items-center gap-1 text-xs" aria-label="Breadcrumb">
+              <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
+                <Home size={13} />
+                <span>Home</span>
+              </span>
+
+            </nav>
+
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("open-create-organization"))}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
+            >
+              <Plus size={13} />
+              Create Organization
             </button>
           </div>
         </div>
