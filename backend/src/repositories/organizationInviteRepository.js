@@ -12,6 +12,17 @@ export class OrganizationInviteRepository {
       .populate("invitedBy", "name email");
   }
 
+  findById(id) {
+    return OrganizationInvite.findById(id);
+  }
+
+  findByIdWithRelations(id) {
+    return OrganizationInvite.findById(id)
+      .populate("organization")
+      .populate("department")
+      .populate("invitedBy", "name email");
+  }
+
   findPendingByScopeAndEmail({ organizationId, departmentId = null, email }) {
     return OrganizationInvite.findOne({
       organization: organizationId,

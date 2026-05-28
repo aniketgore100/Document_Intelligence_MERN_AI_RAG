@@ -53,6 +53,24 @@ const organizationInviteSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    emailDeliveryStatus: {
+      type: String,
+      enum: ["queued", "sent", "failed"],
+      default: "queued",
+      index: true,
+    },
+    emailSentAt: {
+      type: Date,
+      default: null,
+    },
+    lastEmailError: {
+      type: String,
+      default: null,
+    },
+    sesMessageId: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -76,6 +94,10 @@ organizationInviteSchema.methods.toPublic = function () {
     expiresAt: this.expiresAt,
     invitedBy: this.invitedBy,
     acceptedAt: this.acceptedAt,
+    emailDeliveryStatus: this.emailDeliveryStatus,
+    emailSentAt: this.emailSentAt,
+    lastEmailError: this.lastEmailError,
+    sesMessageId: this.sesMessageId,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

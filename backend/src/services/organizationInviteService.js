@@ -7,13 +7,19 @@ import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { ROLES } from "../constants/roles.js";
 import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
+import { inviteEmailQueue } from "../queue/inviteQueue.js";
+
+
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const DEFAULT_INVITE_TTL_HOURS = 1 / 60;
 
+
+
+
 export class OrganizationInviteService {
 
-  
+
   constructor({
     inviteRepository = new OrganizationInviteRepository(),
     organizationRepository = new OrganizationRepository(),
@@ -77,8 +83,8 @@ export class OrganizationInviteService {
     return roleDoc;
   }
 
-  
-  
+
+
   async createInvite({
     organizationId,
     departmentId = null,
@@ -224,15 +230,23 @@ export class OrganizationInviteService {
       ? await this.inviteRepository.create(invitePayload, { session })
       : await this.inviteRepository.create(invitePayload);
 
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-    const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
+    // const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    // const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
 
-    console.log("inviteLink :: ", inviteLink);
-    
+
+    await inviteEmailQueue.add(
+      "invite.send",
+      {
+        inviteId: String(invite._id),
+        rawToken,
+      },
+      {
+        jobId: `invite-${invite._id}-send-v1`,
+      }
+    );
 
     return {
       invite,
-      inviteLink,
       rawToken,
     };
   }
@@ -259,12 +273,12 @@ export class OrganizationInviteService {
       },
       ...(invite.department
         ? {
-            department: {
-              id: invite.department?._id,
-              name: invite.department?.name,
-              slug: invite.department?.slug,
-            },
-          }
+          department: {
+            id: invite.department?._id,
+            name: invite.department?.name,
+            slug: invite.department?.slug,
+          },
+        }
         : {}),
       expiresAt: invite.expiresAt,
       status: invite.status,
@@ -414,10 +428,10 @@ export class OrganizationInviteService {
       membershipId: membership._id,
       user: membership.user
         ? {
-            id: membership.user._id,
-            name: membership.user.name,
-            email: membership.user.email,
-          }
+          id: membership.user._id,
+          name: membership.user.name,
+          email: membership.user.email,
+        }
         : null,
       organization: membership.organization,
       department: membership.department,
