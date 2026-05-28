@@ -21,9 +21,10 @@ const organizationMembershipSchema = new mongoose.Schema(
       index: true,
     },
     department: {
-      type: String,
-      trim: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
       default: null,
+      index: true,
     },
     status: {
       type: String,

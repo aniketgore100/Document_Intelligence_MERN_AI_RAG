@@ -10,6 +10,7 @@ import authRoutes from './src/routes/authRoutes.js';
 import organizationRoutes from './src/routes/organizationRoutes.js';
 import roleRoutes from './src/routes/roleRoutes.js';
 import organizationInviteRoutes from './src/routes/organizationInviteRoutes.js';
+import departmentRoutes from './src/routes/departmentRoutes.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import logger from './src/utils/logger.js';
 import dotenv from 'dotenv';
@@ -48,6 +49,7 @@ app.get('/health', (_, res) => res.json({ status: 'ok', ts: new Date() }));
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/organization-invites', organizationInviteRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/roles', roleRoutes);
 
 // ── Error handling ─────────────────────────────────────────────────────────

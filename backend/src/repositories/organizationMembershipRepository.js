@@ -1,8 +1,8 @@
 import OrganizationMembership from "../models/OrganizationMembership.js";
 
 export class OrganizationMembershipRepository {
-  create(payload) {
-    return OrganizationMembership.create(payload);
+  create(payload, options = {}) {
+    return OrganizationMembership.create([payload], options).then((docs) => docs[0]);
   }
 
   findByUserOrgRole({ userId, organizationId, roleName, department = null }) {
@@ -12,5 +12,42 @@ export class OrganizationMembershipRepository {
       roleName,
       department,
     });
+  }
+
+  findActiveOrgMembershipByRole({ userId, roleName }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      roleName,
+      status: "active",
+      department: null,
+    });
+  }
+
+  findActiveDepartmentMembership({ userId, departmentId }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      department: departmentId,
+      status: "active",
+    });
+  }
+
+  findActiveDepartmentMembershipByRole({ userId, roleName }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      roleName,
+      status: "active",
+      department: { $ne: null },
+    }).populate("department", "name slug");
+  }
+
+  listDepartmentMembersByRole({ organizationId, departmentId, roleName, status = "active" }) {
+    return OrganizationMembership.find({
+      organization: organizationId,
+      department: departmentId,
+      roleName,
+      status,
+    })
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
   }
 }

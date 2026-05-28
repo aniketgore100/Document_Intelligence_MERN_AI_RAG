@@ -1,27 +1,61 @@
 import { Router } from "express";
-import { body, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validate } from "../middleware/validate.js";
 import { protect } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { ACTIONS } from "../constants/actions.js";
 import {
   acceptOrganizationInvite,
-  createOrganizationInvite,
+  createDepartmentAdminInvite,
+  createDepartmentUserInvite,
+  createOrgAdminInvite,
+  listDepartmentUsers,
   validateOrganizationInvite,
 } from "../controllers/organizationInviteController.js";
 
 const router = Router();
 
 router.post(
-  "/create",
+  "/org-admin",
   protect,
   authorize(ACTIONS.ORGANIZATION.CREATE),
   validate([
     body("organizationId").isMongoId().withMessage("organizationId must be a valid id"),
     body("email").isEmail().withMessage("Valid email required").normalizeEmail(),
-    body("roleName").optional().isString().trim().notEmpty().withMessage("roleName must be a non-empty string"),
   ]),
-  createOrganizationInvite
+  createOrgAdminInvite
+);
+
+router.post(
+  "/department-admin",
+  protect,
+  authorize(ACTIONS.DEPARTMENT.CREATE),
+  validate([
+    body("organizationId").isMongoId().withMessage("organizationId must be a valid id"),
+    body("departmentId").isMongoId().withMessage("departmentId must be a valid id"),
+    body("email").isEmail().withMessage("Valid email required").normalizeEmail(),
+  ]),
+  createDepartmentAdminInvite
+);
+
+router.post(
+  "/department-user",
+  protect,
+  authorize(ACTIONS.USER.CREATE),
+  validate([
+    body("organizationId").isMongoId().withMessage("organizationId must be a valid id"),
+    body("departmentId").isMongoId().withMessage("departmentId must be a valid id"),
+    body("email").isEmail().withMessage("Valid email required").normalizeEmail(),
+  ]),
+  createDepartmentUserInvite
+);
+
+router.get(
+  "/department-users/:departmentId",
+  protect,
+  authorize(ACTIONS.USER.READ),
+  validate([param("departmentId").isMongoId().withMessage("departmentId must be a valid id")]),
+  listDepartmentUsers
 );
 
 router.get(

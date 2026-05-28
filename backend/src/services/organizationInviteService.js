@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { OrganizationInviteRepository } from "../repositories/organizationInviteRepository.js";
 import { OrganizationRepository } from "../repositories/organizationRepositories.js";
+import { DepartmentRepository } from "../repositories/departmentRepository.js";
 import { AuthRepository } from "../repositories/authRepository.js";
 import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
@@ -8,18 +9,22 @@ import { ROLES } from "../constants/roles.js";
 import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
-const DEFAULT_INVITE_TTL_HOURS = 72;
+const DEFAULT_INVITE_TTL_HOURS = 1 / 60;
 
 export class OrganizationInviteService {
+
+  
   constructor({
     inviteRepository = new OrganizationInviteRepository(),
     organizationRepository = new OrganizationRepository(),
+    departmentRepository = new DepartmentRepository(),
     authRepository = new AuthRepository(),
     roleRepository = new RoleRepository(),
     organizationMembershipRepository = new OrganizationMembershipRepository(),
   } = {}) {
     this.inviteRepository = inviteRepository;
     this.organizationRepository = organizationRepository;
+    this.departmentRepository = departmentRepository;
     this.authRepository = authRepository;
     this.roleRepository = roleRepository;
     this.organizationMembershipRepository = organizationMembershipRepository;
@@ -60,21 +65,29 @@ export class OrganizationInviteService {
     }
   }
 
-  async ensureOrgAdminRole() {
-    let roleDoc = await this.roleRepository.findByName(ROLES.ORG_ADMIN);
+  async ensureRole(roleName) {
+    let roleDoc = await this.roleRepository.findByName(roleName);
     if (roleDoc) return roleDoc;
 
     roleDoc = await this.roleRepository.create({
-      name: ROLES.ORG_ADMIN,
-      permissions: [...getAllowedPermissionsForRole(ROLES.ORG_ADMIN)],
+      name: roleName,
+      permissions: [...getAllowedPermissionsForRole(roleName)],
     });
 
     return roleDoc;
   }
 
-  async createInvite({ organizationId, email, invitedBy, roleName = ROLES.ORG_ADMIN }) {
-
-
+  
+  
+  async createInvite({
+    organizationId,
+    departmentId = null,
+    email,
+    invitedBy,
+    inviterRoleName = null,
+    roleName = ROLES.ORG_ADMIN,
+    session = null,
+  }) {
 
     const normalizedEmail = this.normalizeEmail(email);
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
@@ -90,6 +103,92 @@ export class OrganizationInviteService {
       throw err;
     }
 
+    if (departmentId) {
+      const department = await this.departmentRepository.findByIdPlain(
+        departmentId,
+        session ? { session } : {}
+      );
+      if (!department) {
+        const err = new Error("Department not found");
+        err.statusCode = 404;
+        throw err;
+      }
+      if (String(department.organization) !== String(organizationId)) {
+        const err = new Error("Department does not belong to organization");
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    if (roleName === ROLES.ORG_ADMIN) {
+      if (inviterRoleName !== ROLES.GLOBAL_ADMIN) {
+        const err = new Error("Only global admin can invite organization admin");
+        err.statusCode = 403;
+        throw err;
+      }
+      if (departmentId) {
+        const err = new Error("Department is not allowed for organization admin invite");
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    if (roleName === ROLES.DEPT_ADMIN) {
+      if (inviterRoleName !== ROLES.ORG_ADMIN) {
+        const err = new Error("Only organization admin can invite department admin");
+        err.statusCode = 403;
+        throw err;
+      }
+      if (!departmentId) {
+        const err = new Error("departmentId is required for department admin invite");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const inviterOrgMembership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
+        userId: invitedBy,
+        roleName: ROLES.ORG_ADMIN,
+      });
+
+      if (!inviterOrgMembership || String(inviterOrgMembership.organization) !== String(organizationId)) {
+        const err = new Error("Invite scope is outside your organization");
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    if (roleName === ROLES.USER) {
+      if (inviterRoleName !== ROLES.DEPT_ADMIN) {
+        const err = new Error("Only department admin can invite users");
+        err.statusCode = 403;
+        throw err;
+      }
+      if (!departmentId) {
+        const err = new Error("departmentId is required for user invite");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const inviterDepartmentMembership =
+        await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+          userId: invitedBy,
+          roleName: ROLES.DEPT_ADMIN,
+        });
+
+      const inviterDepartmentId =
+        inviterDepartmentMembership?.department?._id || inviterDepartmentMembership?.department;
+
+      if (
+        !inviterDepartmentMembership ||
+        String(inviterDepartmentMembership.organization) !== String(organizationId) ||
+        String(inviterDepartmentId) !== String(departmentId)
+      ) {
+        const err = new Error("Invite scope is outside your department");
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
     const existingUser = await this.authRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       const err = new Error("User with this email already exists");
@@ -97,8 +196,9 @@ export class OrganizationInviteService {
       throw err;
     }
 
-    const existingPending = await this.inviteRepository.findPendingByOrgAndEmail({
+    const existingPending = await this.inviteRepository.findPendingByScopeAndEmail({
       organizationId,
+      departmentId,
       email: normalizedEmail,
     });
     if (existingPending && new Date(existingPending.expiresAt) > new Date()) {
@@ -111,19 +211,24 @@ export class OrganizationInviteService {
     const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + DEFAULT_INVITE_TTL_HOURS * 60 * 60 * 1000);
 
-    const invite = await this.inviteRepository.create({
+    const invitePayload = {
       organization: organizationId,
+      ...(departmentId ? { department: departmentId } : {}),
       email: normalizedEmail,
       roleName,
       tokenHash,
       expiresAt,
       invitedBy,
-    });
+    };
+    const invite = session
+      ? await this.inviteRepository.create(invitePayload, { session })
+      : await this.inviteRepository.create(invitePayload);
 
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
 
-    console.log("inviteLink :::", inviteLink);
+    console.log("inviteLink :: ", inviteLink);
+    
 
     return {
       invite,
@@ -152,10 +257,20 @@ export class OrganizationInviteService {
         name: invite.organization?.name,
         slug: invite.organization?.slug,
       },
+      ...(invite.department
+        ? {
+            department: {
+              id: invite.department?._id,
+              name: invite.department?.name,
+              slug: invite.department?.slug,
+            },
+          }
+        : {}),
       expiresAt: invite.expiresAt,
       status: invite.status,
     };
   }
+
 
   async acceptInvite({ token, name, password }) {
     if (!token) {
@@ -187,7 +302,7 @@ export class OrganizationInviteService {
       throw err;
     }
 
-    const roleDoc = await this.ensureOrgAdminRole();
+    const roleDoc = await this.ensureRole(invite.roleName);
 
     const user = await this.authRepository.createUser({
       name: name.trim(),
@@ -197,16 +312,27 @@ export class OrganizationInviteService {
     });
 
     const organization = await this.organizationRepository.findById(invite.organization?._id);
+    let department = null;
     if (organization) {
-      organization.Owner = user._id;
-      await this.organizationRepository.save(organization);
+      if (invite.roleName === ROLES.ORG_ADMIN) {
+        organization.Owner = user._id;
+        await this.organizationRepository.save(organization);
+      }
+    }
+
+    if (invite.department?._id && invite.roleName === ROLES.DEPT_ADMIN) {
+      department = await this.departmentRepository.findByIdPlain(invite.department._id);
+      if (department) {
+        department.Owner = user._id;
+        await this.departmentRepository.save(department);
+      }
     }
 
     const existingMembership = await this.organizationMembershipRepository.findByUserOrgRole({
       userId: user._id,
       organizationId: invite.organization?._id,
       roleName: invite.roleName,
-      department: null,
+      department: invite.department?._id || null,
     });
 
     if (!existingMembership) {
@@ -214,7 +340,7 @@ export class OrganizationInviteService {
         user: user._id,
         organization: invite.organization?._id,
         roleName: invite.roleName,
-        department: null,
+        department: invite.department?._id || null,
         status: "active",
         invitedBy: invite.invitedBy?._id || invite.invitedBy || null,
         joinedAt: new Date(),
@@ -228,7 +354,86 @@ export class OrganizationInviteService {
     return {
       user: user.toPublic(),
       organization: organization?.toPublic() || null,
+      department: department?.toPublic() || null,
       invite: invite.toPublic(),
     };
   }
+
+  async listDepartmentUsers({ departmentId, requestedBy, requesterRoleName }) {
+    if (!departmentId) {
+      const err = new Error("departmentId is required");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (requesterRoleName !== ROLES.DEPT_ADMIN) {
+      const err = new Error("Only department admin can view department users");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const requesterMembership = await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+      userId: requestedBy,
+      roleName: ROLES.DEPT_ADMIN,
+    });
+
+    const requesterDepartmentId = requesterMembership?.department?._id || requesterMembership?.department;
+    if (!requesterMembership || String(requesterDepartmentId) !== String(departmentId)) {
+      const err = new Error("Cannot access users from another department");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const memberships = await this.organizationMembershipRepository.listDepartmentMembersByRole({
+      organizationId: requesterMembership.organization,
+      departmentId,
+      roleName: ROLES.USER,
+      status: "active",
+    });
+
+    const invites = await this.inviteRepository.listByDepartmentAndRole({
+      organizationId: requesterMembership.organization,
+      departmentId,
+      roleName: ROLES.USER,
+      statuses: ["pending", "expired"],
+    });
+
+    const inviteByEmail = new Map();
+    for (const invite of invites) {
+      if (!invite?.email || inviteByEmail.has(invite.email)) continue;
+      inviteByEmail.set(invite.email, {
+        id: invite._id,
+        email: invite.email,
+        status: invite.status,
+        expiresAt: invite.expiresAt,
+        createdAt: invite.createdAt,
+      });
+    }
+
+    const users = memberships.map((membership) => ({
+      membershipId: membership._id,
+      user: membership.user
+        ? {
+            id: membership.user._id,
+            name: membership.user.name,
+            email: membership.user.email,
+          }
+        : null,
+      organization: membership.organization,
+      department: membership.department,
+      roleName: membership.roleName,
+      status: membership.status,
+      joinedAt: membership.joinedAt,
+      createdAt: membership.createdAt,
+      updatedAt: membership.updatedAt,
+    }));
+
+    const activeUserEmails = new Set(users.map((item) => item.user?.email).filter(Boolean));
+    const pendingInvites = Array.from(inviteByEmail.values()).filter(
+      (invite) => !activeUserEmails.has(invite.email)
+    );
+
+    return { users, pendingInvites };
+  }
+
 }

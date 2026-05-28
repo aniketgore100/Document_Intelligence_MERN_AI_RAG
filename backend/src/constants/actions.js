@@ -3,6 +3,12 @@ export const ACTIONS = Object.freeze({
     CREATE: 'organization:create',
     READ: 'organization:read',
   }),
+  DEPARTMENT: Object.freeze({
+    CREATE: 'department:create',
+    READ: 'department:read',
+    UPDATE: 'department:update',
+    DELETE: 'department:delete',
+  }),
 
   ROLE: Object.freeze({
     CREATE: 'role:create',

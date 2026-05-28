@@ -1,0 +1,296 @@
+import mongoose from "mongoose";
+import { DepartmentRepository } from "../repositories/departmentRepository.js";
+import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
+import { OrganizationInviteService } from "./organizationInviteService.js";
+import { ROLES } from "../constants/roles.js";
+
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+
+export class DepartmentService {
+  constructor({
+    departmentRepository = new DepartmentRepository(),
+    organizationMembershipRepository = new OrganizationMembershipRepository(),
+    organizationInviteService = new OrganizationInviteService(),
+  } = {}) {
+    this.departmentRepository = departmentRepository;
+    this.organizationMembershipRepository = organizationMembershipRepository;
+    this.organizationInviteService = organizationInviteService;
+  }
+
+  toPublicDepartment(department) {
+    if (!department) return null;
+    if (typeof department.toPublic === "function") return department.toPublic();
+
+    return {
+      id: department._id,
+      organization: department.organization,
+      name: department.name,
+      slug: department.slug,
+      status: department.status,
+      createdBy: department.createdBy,
+      Owner: department.Owner || null,
+      inviteStatus: department.inviteStatus ?? null,
+      inviteExpiresAt: department.inviteExpiresAt ?? null,
+      inviteEmail: department.inviteEmail ?? null,
+      createdAt: department.createdAt,
+      updatedAt: department.updatedAt,
+    };
+  }
+
+  slugify(name) {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+  }
+
+  async getOrgAdminMembership(userId) {
+    const membership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
+      userId,
+      roleName: ROLES.ORG_ADMIN,
+    });
+
+    if (!membership) {
+      const err = new Error("Organization context not found for this account");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return membership;
+  }
+
+
+  async getDepartmentAdminMembership(userId) {
+    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+      userId,
+      roleName: ROLES.DEPT_ADMIN,
+    });
+
+    if (!membership) {
+      const err = new Error("Department context not found for this account");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return membership;
+  }
+
+  async createDepartment({ name, status, adminEmail, createdBy }) {
+    if (!name || name.trim().length < 2) {
+      const err = new Error("Department name must be at least 2 characters");
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!adminEmail || !EMAIL_REGEX.test(adminEmail.trim())) {
+      const err = new Error("Valid department admin email is required");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const orgAdminMembership = await this.getOrgAdminMembership(createdBy);
+    const organizationId = orgAdminMembership.organization;
+    const slug = this.slugify(name);
+
+    const existing = await this.departmentRepository.findBySlugInOrganization({
+      organizationId,
+      slug,
+    });
+    if (existing) {
+      const err = new Error("Department with this name already exists in organization");
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const allowedStatus = new Set(["active", "suspended", "archived"]);
+    const normalizedStatus = status?.trim() || "active";
+    if (!allowedStatus.has(normalizedStatus)) {
+      const err = new Error("Invalid department status");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+
+      const department = await this.departmentRepository.create(
+        {
+          organization: organizationId,
+          name: name.trim(),
+          slug,
+          status: normalizedStatus,
+          createdBy,
+        },
+        { session }
+      );
+
+      const inviteResult = await this.organizationInviteService.createInvite({
+        organizationId,
+        departmentId: department._id,
+        email: adminEmail.trim(),
+        invitedBy: createdBy,
+        inviterRoleName: ROLES.ORG_ADMIN,
+        roleName: ROLES.DEPT_ADMIN,
+        session,
+      });
+
+      await session.commitTransaction();
+      return {
+        department,
+        invite: {
+          ...inviteResult.invite.toPublic(),
+          inviteLink: inviteResult.inviteLink,
+        },
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async listDepartments({ userId, page = 1, limit = 20, status }) {
+    
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+    const safePage = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const safeLimitRaw = Number.isInteger(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20;
+    const safeLimit = Math.min(safeLimitRaw, 100);
+    const skip = (safePage - 1) * safeLimit;
+
+    const allowedStatus = new Set(["active", "suspended", "archived"]);
+    const normalizedStatus = status?.trim();
+    if (normalizedStatus && !allowedStatus.has(normalizedStatus)) {
+      const err = new Error("Invalid status filter");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const orgAdminMembership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
+      userId,
+      roleName: ROLES.ORG_ADMIN,
+    });
+
+    if (orgAdminMembership) {
+      const organizationId = orgAdminMembership.organization;
+
+      const [departments, total] = await Promise.all([
+        this.departmentRepository.listByOrganization({
+          organizationId,
+          status: normalizedStatus,
+          limit: safeLimit,
+          skip,
+        }),
+        this.departmentRepository.countByOrganization({
+          organizationId,
+          status: normalizedStatus,
+        }),
+      ]);
+
+      return {
+        departments: departments.map((dept) => this.toPublicDepartment(dept)),
+        pagination: {
+          page: safePage,
+          limit: safeLimit,
+          total,
+          totalPages: Math.ceil(total / safeLimit) || 1,
+          hasNextPage: skip + departments.length < total,
+          hasPrevPage: safePage > 1,
+        },
+      };
+    }
+
+    const deptAdminMembership = await this.getDepartmentAdminMembership(userId);
+    const departmentId = deptAdminMembership.department?._id || deptAdminMembership.department;
+    const department = await this.departmentRepository.findById(departmentId);
+
+    const matchesStatus = !normalizedStatus || department?.status === normalizedStatus;
+    const scopedDepartments = department && matchesStatus ? [department] : [];
+
+    return {
+      departments: scopedDepartments.map((dept) => this.toPublicDepartment(dept)),
+      pagination: {
+        page: 1,
+        limit: safeLimit,
+        total: scopedDepartments.length,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
+  }
+
+  async updateDepartment({ departmentId, userId, name, status }) {
+    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembership({
+      userId,
+      departmentId,
+    });
+    if (!membership || membership.roleName !== ROLES.DEPT_ADMIN) {
+      const err = new Error("Not allowed to update this department");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const department = await this.departmentRepository.findByIdPlain(departmentId);
+    if (!department) {
+      const err = new Error("Department not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (name && name.trim() && name.trim() !== department.name) {
+      const slug = this.slugify(name);
+      const existing = await this.departmentRepository.findBySlugInOrganization({
+        organizationId: department.organization,
+        slug,
+      });
+      if (existing && String(existing._id) !== String(department._id)) {
+        const err = new Error("Department with this name already exists in organization");
+        err.statusCode = 409;
+        throw err;
+      }
+      department.name = name.trim();
+      department.slug = slug;
+    }
+
+    if (status) {
+      const allowedStatus = new Set(["active", "suspended", "archived"]);
+      const normalizedStatus = status.trim();
+      if (!allowedStatus.has(normalizedStatus)) {
+        const err = new Error("Invalid department status");
+        err.statusCode = 400;
+        throw err;
+      }
+      department.status = normalizedStatus;
+    }
+
+    await this.departmentRepository.save(department);
+    const populated = await this.departmentRepository.findById(department._id);
+    return populated.toPublic();
+  }
+
+  async deleteDepartment({ departmentId, userId }) {
+    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembership({
+      userId,
+      departmentId,
+    });
+    if (!membership || membership.roleName !== ROLES.DEPT_ADMIN) {
+      const err = new Error("Not allowed to delete this department");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const department = await this.departmentRepository.findByIdPlain(departmentId);
+    if (!department) {
+      const err = new Error("Department not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    await this.departmentRepository.deleteById(departmentId);
+    return { success: true };
+  }
+}

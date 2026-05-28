@@ -8,6 +8,10 @@ import AppLayout from './components/UI/AppLayout';
 import Home from './pages/Home';
 import { ROLES } from './constants/roles';
 import AcceptInvite from './pages/AcceptInvite';
+import DepartmentUsers from './pages/DepartmentUsers';
+import OrgAdminHomeView from './components/home/OrgAdminHomeView';
+import OrgAdminDocuments from './pages/OrgAdminDocuments';
+import OrgAdminSettings from './pages/OrgAdminSettings';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -21,6 +25,17 @@ const App = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/home" element={<Home />} />
+
+          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ORG_ADMIN]} />}>
+            <Route path="/departments" element={<OrgAdminHomeView />} />
+          </Route>
+
+          <Route path="/documents" element={<OrgAdminDocuments />} />
+          <Route path="/settings" element={<OrgAdminSettings />} />
+
+          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.DEPT_ADMIN]} />}>
+            <Route path="/department/users" element={<DepartmentUsers />} />
+          </Route>
 
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.GLOBAL_ADMIN]} />}>
             <Route path="/roles" element={<RolesList />} />

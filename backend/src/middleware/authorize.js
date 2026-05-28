@@ -1,6 +1,7 @@
 import { can } from "../security/policy.js";
 
 export const authorize = (action) => {
+
     
     return(req, res, next) => {
 

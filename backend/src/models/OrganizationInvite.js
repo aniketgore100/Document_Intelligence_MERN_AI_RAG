@@ -8,6 +8,12 @@ const organizationInviteSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      default: null,
+      index: true,
+    },
     email: {
       type: String,
       required: true,
@@ -55,7 +61,7 @@ const organizationInviteSchema = new mongoose.Schema(
 );
 
 organizationInviteSchema.index(
-  { organization: 1, email: 1, status: 1 },
+  { organization: 1, department: 1, email: 1, status: 1 },
   { partialFilterExpression: { status: "pending" } }
 );
 
@@ -63,6 +69,7 @@ organizationInviteSchema.methods.toPublic = function () {
   return {
     id: this._id,
     organization: this.organization,
+    department: this.department,
     email: this.email,
     roleName: this.roleName,
     status: this.status,

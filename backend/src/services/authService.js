@@ -1,5 +1,6 @@
 import { AuthRepository } from "../repositories/authRepository.js";
 import { RoleRepository } from "../repositories/roleRepository.js";
+import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { signToken } from "../utils/jwt.js";
 import { ROLES } from "../constants/roles.js";
 import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
@@ -9,9 +10,11 @@ export class AuthService {
   constructor({ 
     authRepository = new AuthRepository(), 
     roleRepository = new RoleRepository(),
+    organizationMembershipRepository = new OrganizationMembershipRepository(),
   } = {}) {
     this.authRepository = authRepository;
     this.roleRepository = roleRepository;
+    this.organizationMembershipRepository = organizationMembershipRepository;
   }
 
   normalizePermissions(permissions) {
@@ -83,12 +86,20 @@ export class AuthService {
     }
 
     const roleDoc = user.role ? await this.roleRepository.findById(user.role) : null;
+    const departmentMembership =
+      roleDoc?.name === ROLES.DEPT_ADMIN
+        ? await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+            userId: user._id,
+            roleName: ROLES.DEPT_ADMIN,
+          })
+        : null;
     const token = signToken({ id: user._id });
 
     return {
       user: {
         ...user.toPublic(),
         roleName: roleDoc?.name || null,
+        departmentName: departmentMembership?.department?.name || null,
       },
       token,
     };

@@ -1,5 +1,4 @@
 import {
-  ArchiveRestore,
   Building2,
   FileText,
   Home,
@@ -12,13 +11,11 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROLES } from "../../constants/roles";
 
-const defaultMenuItems = [
+const orgAdminMenuItems = [
   { name: "Home", icon: Home, path: "/home" },
-  { name: "Departments", icon: Building2 },
-  { name: "Documents", icon: FileText },
-  { name: "Users", icon: Users },
-  { name: "Retrieve", icon: ArchiveRestore },
-  { name: "Settings", icon: Settings },
+  { name: "Departments", icon: Building2, path: "/departments" },
+  { name: "Documents", icon: FileText, path: "/documents" },
+  { name: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const globalAdminMenuItems = [
@@ -27,16 +24,28 @@ const globalAdminMenuItems = [
   { name: "Settings", icon: Settings },
 ];
 
-const Sidebar = ({ isCollapsed, onToggle, roleName }) => {
+const deptAdminMenuItems = [
+  { name: "Home", icon: Home, path: "/home" },
+  { name: "Documents", icon: FileText, path: "/documents" },
+  { name: "Manage Users", icon: Users, path: "/department/users" },
+  { name: "Settings", icon: Settings, path: "/settings" },
+];
+
+const Sidebar = ({ isCollapsed, onToggle, roleName, isMobileOpen, onCloseMobile }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const menuItems = roleName === ROLES.GLOBAL_ADMIN ? globalAdminMenuItems : defaultMenuItems;
+  const menuItems =
+    roleName === ROLES.GLOBAL_ADMIN
+      ? globalAdminMenuItems
+      : roleName === ROLES.DEPT_ADMIN
+        ? deptAdminMenuItems
+        : orgAdminMenuItems;
 
   return (
     <aside
-      className={`sticky top-0 z-40 flex h-screen shrink-0 flex-col border-r border-slate-300/70 bg-slate-100/75 backdrop-blur-md transition-all duration-300 dark:border-slate-700/70 dark:bg-slate-900/55 ${
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen shrink-0 flex-col border-r border-slate-300/70 bg-slate-100/75 backdrop-blur-md transition-all duration-300 dark:border-slate-700/70 dark:bg-slate-900/55 ${
         isCollapsed ? "w-20" : "w-64"
-      }`}
+      } ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} md:sticky md:translate-x-0`}
     >
       <div className={`border-b py-3 ${isCollapsed ? "px-2" : "px-3"}`}>
         <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
@@ -71,7 +80,10 @@ const Sidebar = ({ isCollapsed, onToggle, roleName }) => {
             <button
               key={item.name}
               type="button"
-              onClick={() => item.path && navigate(item.path)}
+            onClick={() => {
+              if (item.path) navigate(item.path);
+              if (onCloseMobile) onCloseMobile();
+            }}
               className={`group flex cursor-pointer items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 ${
                 isCollapsed ? "justify-center px-2" : "gap-2.5 px-3"
               } ${

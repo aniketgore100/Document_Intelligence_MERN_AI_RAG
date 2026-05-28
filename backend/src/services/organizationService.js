@@ -1,14 +1,19 @@
+import { AuthRepository } from "../repositories/authRepository.js";
 import { OrganizationRepository } from "../repositories/organizationRepositories.js";
 import { OrganizationInviteService } from "./organizationInviteService.js";
+import { ROLES } from "../constants/roles.js";
 
 export class OrganizationService {
   
   constructor({
     organizationRepository = new OrganizationRepository(),
     organizationInviteService = new OrganizationInviteService(),
+    authRepository = new AuthRepository(),
+    
   } = {}) {
     this.organizationRepository = organizationRepository;
     this.organizationInviteService = organizationInviteService;
+    this.authRepository = authRepository;
   }
 
   slugify(name) {
@@ -76,6 +81,13 @@ export class OrganizationService {
       throw err;
     }
 
+    const existingUser = await this.authRepository.findByEmail(metadata?.orgAdminEmail?.trim()?.toLowerCase());
+    if (existingUser) {
+      const err = new Error("User with this email already exists");
+      err.statusCode = 409;
+      throw err;
+    }
+
     const org = await this.organizationRepository.create({
       name: name.trim(),
       slug,
@@ -90,6 +102,7 @@ export class OrganizationService {
         organizationId: org._id,
         email: inviteEmail,
         invitedBy: createdBy,
+        inviterRoleName: ROLES.GLOBAL_ADMIN,
       });
 
       return {
