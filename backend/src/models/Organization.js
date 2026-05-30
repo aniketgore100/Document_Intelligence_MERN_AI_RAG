@@ -48,10 +48,9 @@ const organizationSchema = new mongoose.Schema(
 );
 
 // Optional safety: normalize before validation/save
-organizationSchema.pre("validate", function (next) {
+organizationSchema.pre("validate", function () {
   if (this.name) this.name = this.name.trim();
   if (this.slug) this.slug = this.slug.trim().toLowerCase();
-  next();
 });
 
 organizationSchema.methods.toPublic = function () {

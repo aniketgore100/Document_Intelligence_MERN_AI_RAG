@@ -49,10 +49,9 @@ const departmentSchema = new mongoose.Schema(
 
 departmentSchema.index({ organization: 1, slug: 1 }, { unique: true });
 
-departmentSchema.pre("validate", function (next) {
+departmentSchema.pre("validate", function () {
   if (this.name) this.name = this.name.trim();
   if (this.slug) this.slug = this.slug.trim().toLowerCase();
-  next();
 });
 
 departmentSchema.methods.toPublic = function () {

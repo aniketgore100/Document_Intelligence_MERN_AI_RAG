@@ -5,7 +5,11 @@ const roleService = new RoleService();
 export const createRole = async (req, res, next) => {
   try {
     const { name, permissions } = req.body;
-    const role = await roleService.createRole({ name, permissions });
+    const role = await roleService.createRole({
+      name,
+      permissions,
+      actorRoleName: req.auth?.roleName || null,
+    });
 
     return res.status(201).json({
       role,
@@ -23,6 +27,7 @@ export const updateRolePermissions = async (req, res, next) => {
     const role = await roleService.updateRolePermissions({
       roleId: id,
       permissions,
+      actorRoleName: req.auth?.roleName || null,
     });
 
     return res.status(200).json({
@@ -36,7 +41,9 @@ export const updateRolePermissions = async (req, res, next) => {
 
 export const getRoles = async(req, res, next) => {
   try{
-    const roles = await roleService.getRoles();
+    const roles = await roleService.getRoles({
+      actorRoleName: req.auth?.roleName || null,
+    });
     return res.status(200).json({
       roles,
     })

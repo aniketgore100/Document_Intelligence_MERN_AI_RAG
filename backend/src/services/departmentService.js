@@ -224,11 +224,11 @@ export class DepartmentService {
   }
 
   async updateDepartment({ departmentId, userId, name, status }) {
-    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembership({
+    const membership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
       userId,
-      departmentId,
+      roleName: ROLES.ORG_ADMIN,
     });
-    if (!membership || membership.roleName !== ROLES.DEPT_ADMIN) {
+    if (!membership) {
       const err = new Error("Not allowed to update this department");
       err.statusCode = 403;
       throw err;
@@ -238,6 +238,12 @@ export class DepartmentService {
     if (!department) {
       const err = new Error("Department not found");
       err.statusCode = 404;
+      throw err;
+    }
+
+    if (String(department.organization) !== String(membership.organization)) {
+      const err = new Error("Not allowed to update this department");
+      err.statusCode = 403;
       throw err;
     }
 
@@ -273,11 +279,11 @@ export class DepartmentService {
   }
 
   async deleteDepartment({ departmentId, userId }) {
-    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembership({
+    const membership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
       userId,
-      departmentId,
+      roleName: ROLES.ORG_ADMIN,
     });
-    if (!membership || membership.roleName !== ROLES.DEPT_ADMIN) {
+    if (!membership) {
       const err = new Error("Not allowed to delete this department");
       err.statusCode = 403;
       throw err;
@@ -287,6 +293,12 @@ export class DepartmentService {
     if (!department) {
       const err = new Error("Department not found");
       err.statusCode = 404;
+      throw err;
+    }
+
+    if (String(department.organization) !== String(membership.organization)) {
+      const err = new Error("Not allowed to delete this department");
+      err.statusCode = 403;
       throw err;
     }
 

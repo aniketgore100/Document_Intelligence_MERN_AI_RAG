@@ -1,6 +1,9 @@
 import { RoleRepository } from '../repositories/roleRepository.js';
 import { ALL_PERMISSIONS } from '../constants/permissions.js';
+import { ROLES } from '../constants/roles.js';
 import { getAllowedPermissionsForRole } from '../constants/rolePermissionMap.js';
+
+const GLOBAL_ADMIN_MANAGED_ROLES = new Set([ROLES.ORG_ADMIN]);
 
 export class RoleService {
   constructor({ roleRepository = new RoleRepository() } = {}) {
@@ -38,13 +41,23 @@ export class RoleService {
     }
   }
 
-  async createRole({ name, permissions }) {
+  assertRoleManagementScope({ actorRoleName, targetRoleName }) {
+    if (actorRoleName === ROLES.GLOBAL_ADMIN && !GLOBAL_ADMIN_MANAGED_ROLES.has(targetRoleName)) {
+      const err = new Error(`Global admin cannot manage ${targetRoleName}`);
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
+  async createRole({ name, permissions, actorRoleName = null }) {
     const normalizedName = name?.trim();
     if (!normalizedName) {
       const err = new Error('Role name is required');
       err.statusCode = 400;
       throw err;
     }
+
+    this.assertRoleManagementScope({ actorRoleName, targetRoleName: normalizedName });
 
     const normalizedPermissions = this.normalizePermissions(permissions);
     this.validatePermissions(normalizedPermissions);
@@ -63,13 +76,15 @@ export class RoleService {
     });
   }
 
-  async updateRolePermissions({ roleId, permissions }) {
+  async updateRolePermissions({ roleId, permissions, actorRoleName = null }) {
     const role = await this.roleRepository.findById(roleId);
     if (!role) {
       const err = new Error('Role not found');
       err.statusCode = 404;
       throw err;
     }
+
+    this.assertRoleManagementScope({ actorRoleName, targetRoleName: role.name });
 
     const normalizedPermissions = this.normalizePermissions(permissions);
     this.validatePermissions(normalizedPermissions);
@@ -79,7 +94,20 @@ export class RoleService {
     return this.roleRepository.save(role);
   }
 
-  async getRoles() {
-    return this.roleRepository.get();
+  async getRoles({ actorRoleName = null } = {}) {
+    const roles = await this.roleRepository.get();
+    const normalizedRoles = roles.map((role) => {
+      const canonicalPermissions = getAllowedPermissionsForRole(role.name);
+      const rawRole = typeof role.toObject === "function" ? role.toObject() : role;
+      if (!canonicalPermissions.length) return rawRole;
+
+      return {
+        ...rawRole,
+        permissions: [...canonicalPermissions],
+      };
+    });
+
+    console.log('Normalized roles:', normalizedRoles);
+    return normalizedRoles;
   }
 }

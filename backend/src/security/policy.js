@@ -22,7 +22,7 @@ export const can = ({ roleName, permissions }, action) => {
   if (globalAdminOnlyActions.has(action) && roleName !== ROLES.GLOBAL_ADMIN) {
     return {
       allowed: false,
-      reason: "Only global admin can manage roles/permissions",
+      reason: "Only global admin can manage organization-level roles/permissions",
     };
   }
 

@@ -142,7 +142,7 @@ const Navbar = ({ user, onMenuToggle }) => {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">Global Admin Home</h1>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage organizations and users from here.</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage organizations and organization admin invitations from here.</p>
             </div>
             <div className="flex items-center gap-1.5">
               <ThemeToggle />

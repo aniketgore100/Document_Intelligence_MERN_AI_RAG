@@ -7,7 +7,7 @@ import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { ROLES } from "../constants/roles.js";
 import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
-import { inviteEmailQueue } from "../queue/inviteQueue.js";
+// import { inviteEmailQueue } from "../queue/inviteQueue.js";
 
 
 
@@ -72,12 +72,27 @@ export class OrganizationInviteService {
   }
 
   async ensureRole(roleName) {
+    const canonicalPermissions = [...getAllowedPermissionsForRole(roleName)];
     let roleDoc = await this.roleRepository.findByName(roleName);
-    if (roleDoc) return roleDoc;
+    if (roleDoc) {
+      const currentPermissions = Array.isArray(roleDoc.permissions)
+        ? [...new Set(roleDoc.permissions.map((permission) => permission?.trim()).filter(Boolean))]
+        : [];
+      const hasDrift =
+        currentPermissions.length !== canonicalPermissions.length ||
+        currentPermissions.some((permission, index) => permission !== canonicalPermissions[index]);
+
+      if (hasDrift) {
+        roleDoc.permissions = canonicalPermissions;
+        roleDoc = await this.roleRepository.save(roleDoc);
+      }
+
+      return roleDoc;
+    }
 
     roleDoc = await this.roleRepository.create({
       name: roleName,
-      permissions: [...getAllowedPermissionsForRole(roleName)],
+      permissions: canonicalPermissions,
     });
 
     return roleDoc;
@@ -230,20 +245,21 @@ export class OrganizationInviteService {
       ? await this.inviteRepository.create(invitePayload, { session })
       : await this.inviteRepository.create(invitePayload);
 
-    // const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-    // const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
+    console.log("invte link :: ", inviteLink);
 
 
-    await inviteEmailQueue.add(
-      "invite.send",
-      {
-        inviteId: String(invite._id),
-        rawToken,
-      },
-      {
-        jobId: `invite-${invite._id}-send-v1`,
-      }
-    );
+    // await inviteEmailQueue.add(
+    //   "invite.send",
+    //   {
+    //     inviteId: String(invite._id),
+    //     rawToken,
+    //   },
+    //   {
+    //     jobId: `invite-${invite._id}-send-v1`,
+    //   }
+    // );
 
     return {
       invite,

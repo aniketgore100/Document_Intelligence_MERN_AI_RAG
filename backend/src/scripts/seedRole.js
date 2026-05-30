@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';    
 import mongoose from "mongoose";
 import Role from "../models/Role.js";
+import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
+import { ROLES } from "../constants/roles.js";
 
 dotenv.config();    
 
@@ -15,8 +17,8 @@ const seedRoles = async () => {
 
         await mongoose.connect(mongoUri);
 
-        const roleName = "GLOBAL_ADMIN";
-        const permissions = ["role:create"];
+        const roleName = ROLES.GLOBAL_ADMIN;
+        const permissions = [...getAllowedPermissionsForRole(roleName)];
 
         const existing = await Role.findOne({
             name : roleName

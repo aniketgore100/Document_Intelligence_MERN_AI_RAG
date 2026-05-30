@@ -126,6 +126,11 @@ const GlobalHomeView = () => {
     }
   };
 
+
+  const handleOrganizationClick = (row) => {
+    console.log("Organization clicked:", row);
+  }
+
   const isLoading = organizationsQuery.isLoading;
   const isError = organizationsQuery.isError;
   const errorMessage = organizationsQuery.error?.data?.message;
@@ -154,38 +159,39 @@ const GlobalHomeView = () => {
       {!isLoading && !isError && hasRows ? (
         <div className="overflow-x-auto rounded-xl bg-transparent">
           <div className="min-w-[780px]">
-          <div className="grid grid-cols-12 border-b bg-slate-50/70 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:bg-slate-900/40 dark:text-slate-300">
-            <p className="col-span-4">Organization Name</p>
-            <p className="col-span-2">Owner</p>
-            <p className="col-span-2">Status</p>
-            <p className="col-span-2">Created Date</p>
-            <p className="col-span-2 text-right pr-2">Actions</p>
-          </div>
-          <div className="max-h-[66vh] overflow-y-auto">
-            {rows.map((row) => (
-              <div key={row.id} className="grid grid-cols-12 items-center gap-2 border-b px-4 py-3 text-sm transition-colors duration-150 hover:bg-slate-100/55 dark:hover:bg-slate-800/30">
-                <div className="col-span-4"><p className="font-medium text-slate-800 dark:text-slate-100">{row.name}</p></div>
-                <div className="col-span-2 text-slate-600 dark:text-slate-300">
-                  {row.adminName || row.adminEmail ? (
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{row.adminName || row.adminEmail}</p>
-                      {row.adminEmail && row.adminName ? <p className="text-xs muted">{row.adminEmail}</p> : null}
-                    </div>
-                  ) : row.inviteStatus === "pending" && row.pendingTime ? (
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Invite pending</p>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-300/90">{row.pendingTime}</p>
-                    </div>
-                  ) : row.inviteExpired ? (
-                    <button type="button" onClick={() => openReinvite({ id: row.id, name: row.name, email: row.inviteEmail })} className="rounded-md border px-2 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30">Invite Again</button>
-                  ) : "-"}
+            <div className="grid grid-cols-12 border-b bg-slate-50/70 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:bg-slate-900/40 dark:text-slate-300">
+              <p className="col-span-4">Organization Name</p>
+              <p className="col-span-2">Owner</p>
+              <p className="col-span-2">Status</p>
+              <p className="col-span-2">Created Date</p>
+              <p className="col-span-2 text-right pr-2">Actions</p>
+            </div>
+            <div className="max-h-[66vh] overflow-y-auto">
+              {rows.map((row) => (
+                <div key={row.id} onClick={() => handleOrganizationClick(row)}
+                  className="grid grid-cols-12 items-center gap-2 border-b px-4 py-3 text-sm transition-colors duration-150 hover:bg-slate-100/55 dark:hover:bg-slate-800/30">
+                  <div className="col-span-4"><p className="font-medium text-slate-800 dark:text-slate-100">{row.name}</p></div>
+                  <div className="col-span-2 text-slate-600 dark:text-slate-300">
+                    {row.adminName || row.adminEmail ? (
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{row.adminName || row.adminEmail}</p>
+                        {row.adminEmail && row.adminName ? <p className="text-xs muted">{row.adminEmail}</p> : null}
+                      </div>
+                    ) : row.inviteStatus === "pending" && row.pendingTime ? (
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Invite pending</p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-300/90">{row.pendingTime}</p>
+                      </div>
+                    ) : row.inviteExpired ? (
+                      <button type="button" onClick={() => openReinvite({ id: row.id, name: row.name, email: row.inviteEmail })} className="rounded-md border px-2 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30">Invite Again</button>
+                    ) : "-"}
+                  </div>
+                  <div className="col-span-2"><span className="rounded-md border px-2 py-0.5 text-xs capitalize">{row.status}</span></div>
+                  <div className="col-span-2 text-slate-600 dark:text-slate-300">{row.createdAt}</div>
+                  <div className="col-span-2 flex justify-end pr-2"><button type="button" className="rounded-lg border p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"><Pencil size={13} /></button></div>
                 </div>
-                <div className="col-span-2"><span className="rounded-md border px-2 py-0.5 text-xs capitalize">{row.status}</span></div>
-                <div className="col-span-2 text-slate-600 dark:text-slate-300">{row.createdAt}</div>
-                <div className="col-span-2 flex justify-end pr-2"><button type="button" className="rounded-lg border p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"><Pencil size={13} /></button></div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}

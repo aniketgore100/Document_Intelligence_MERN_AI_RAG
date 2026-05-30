@@ -27,6 +27,10 @@ export class AuthService {
     ];
   }
 
+  getCanonicalPermissions(roleName) {
+    return [...getAllowedPermissionsForRole(roleName)];
+  }
+
   async register({ name, email, password, role }) {
     const existing = await this.authRepository.findByEmail(email);
     if (existing) {
@@ -42,19 +46,20 @@ export class AuthService {
       let roleDoc = await this.roleRepository.findByName(roleName);
 
       if (roleName === ROLES.GLOBAL_ADMIN) {
+        const canonicalPermissions = this.getCanonicalPermissions(ROLES.GLOBAL_ADMIN);
         if (!roleDoc) {
           roleDoc = await this.roleRepository.create({
             name: ROLES.GLOBAL_ADMIN,
-            permissions: [...getAllowedPermissionsForRole(ROLES.GLOBAL_ADMIN)],
+            permissions: canonicalPermissions,
           });
         } else {
-          const mergedPermissions = this.normalizePermissions([
-            ...(roleDoc.permissions || []),
-            ...getAllowedPermissionsForRole(ROLES.GLOBAL_ADMIN),
-          ]);
+          const currentPermissions = this.normalizePermissions(roleDoc.permissions || []);
+          const hasDrift =
+            currentPermissions.length !== canonicalPermissions.length ||
+            currentPermissions.some((permission, index) => permission !== canonicalPermissions[index]);
 
-          if (mergedPermissions.length !== (roleDoc.permissions || []).length) {
-            roleDoc.permissions = mergedPermissions;
+          if (hasDrift) {
+            roleDoc.permissions = canonicalPermissions;
             roleDoc = await this.roleRepository.save(roleDoc);
           }
         }

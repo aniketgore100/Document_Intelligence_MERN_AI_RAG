@@ -1,5 +1,6 @@
 import { verifyToken } from '../utils/jwt.js';
 import User from '../models/User.js';
+import { getAllowedPermissionsForRole } from '../constants/rolePermissionMap.js';
 
 export const protect = async (req, res, next) => {
   try {
@@ -18,11 +19,17 @@ export const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    const roleName = user.role?.name || null;
+    const canonicalPermissions = roleName ? getAllowedPermissionsForRole(roleName) : [];
     req.auth = {
       userId: user._id.toString(),
       roleId: user.role?._id?.toString() || null,
-      roleName: user.role?.name || null,
-      permissions: Array.isArray(user.role?.permissions) ? user.role.permissions : [],
+      roleName,
+      permissions: canonicalPermissions.length
+        ? canonicalPermissions
+        : Array.isArray(user.role?.permissions)
+          ? user.role.permissions
+          : [],
     };
 
     next();
