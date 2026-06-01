@@ -6,18 +6,20 @@ import { formatRoleName } from "../../utils/formatRoleName";
 import { ROLES } from "../../constants/roles";
 import { useGetOrganizationsQuery } from "../../features/organizations/organizationsApiSlice";
 
-const toTitle = (segment) =>
-  segment
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+const toTitle = (segment) => segment.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const isObjectId = (str) => /^[a-f\d]{24}$/i.test(str);
 
 const toPathBreadcrumbs = (pathname) => {
   const segments = pathname.split("/").filter(Boolean);
-  return segments.map((seg, idx) => ({
+  const filteredSegments = isObjectId(segments[segments.length - 1])? segments.slice(0, -1): segments;
+
+  return filteredSegments.map((seg, idx) => ({
     label: toTitle(seg),
-    path: `/${segments.slice(0, idx + 1).join("/")}`,
-    isLast: idx === segments.length - 1,
+    path: `/${filteredSegments.slice(0, idx + 1).join("/")}`,
+    isLast: idx === filteredSegments.length - 1,
   }));
+  
 };
 
 const getHomeHeading = (roleName) => {

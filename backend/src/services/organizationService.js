@@ -163,5 +163,14 @@ export class OrganizationService {
       },
     };
   }
-  
+
+  async findById(id){
+    return this.organizationRepository.findById(id);
+  }
+
+  async getRolesAndPermission(owner){
+    const user = await this.authRepository.findById(owner);
+    console.log("user :: ", user);
+    
+  };  
 }

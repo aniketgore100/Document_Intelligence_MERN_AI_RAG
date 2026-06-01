@@ -72,4 +72,5 @@ export class OrganizationRepository{
         if (status) filter.status = status;
         return Organization.countDocuments(filter);
     }
+
 }

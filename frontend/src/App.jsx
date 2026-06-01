@@ -12,6 +12,7 @@ import DepartmentUsers from './pages/DepartmentUsers';
 import OrgAdminHomeView from './components/home/OrgAdminHomeView';
 import OrgAdminDocuments from './pages/OrgAdminDocuments';
 import OrgAdminSettings from './pages/OrgAdminSettings';
+import Organizations from './pages/Organizations';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -39,6 +40,10 @@ const App = () => {
 
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.GLOBAL_ADMIN]} />}>
             <Route path="/roles" element={<RolesList />} />
+          </Route>
+
+          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.GLOBAL_ADMIN]} />}>
+            <Route path="/organization/:slug/:id" element={<Organizations />} />
           </Route>
         </Route>
       </Route>

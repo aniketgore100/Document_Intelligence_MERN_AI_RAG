@@ -40,3 +40,15 @@ export const getOrganizations = async(req, res, next) => {
     next(error);
   }
 }
+
+
+
+export const getRolesAndPermission = async(req, res, next) => {
+  try{
+    const {owner} = req.body;
+    const result = await organizationService.getRolesAndPermission(owner);
+    return res.status(200).json(result);
+  }catch(error){
+    next(error);
+  }
+}

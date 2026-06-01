@@ -6,8 +6,14 @@ import {
   useGetOrganizationsQuery,
 } from "../../features/organizations/organizationsApiSlice";
 import { useCreateOrganizationInviteMutation } from "../../features/invites/invitesApiSlice";
+import {useNavigate} from "react-router-dom";
+
+
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+
 
 const formatTimeRemaining = (expiresAt, nowTs) => {
   if (!expiresAt) return null;
@@ -24,6 +30,9 @@ const formatTimeRemaining = (expiresAt, nowTs) => {
 };
 
 const GlobalHomeView = () => {
+
+
+
   const organizationsQuery = useGetOrganizationsQuery({ page: 1, limit: 50 });
   const [createOrganization, { isLoading: isCreatingOrg }] = useCreateOrganizationMutation();
   const [createInvite, { isLoading: isReinviting }] = useCreateOrganizationInviteMutation();
@@ -37,6 +46,8 @@ const GlobalHomeView = () => {
   const [createError, setCreateError] = useState("");
   const [reinviteError, setReinviteError] = useState("");
   const [nowTs, setNowTs] = useState(Date.now());
+  const Navigate = useNavigate();
+
 
   useEffect(() => {
     const orgModalHandler = () => setIsCreateOrgOpen(true);
@@ -49,6 +60,8 @@ const GlobalHomeView = () => {
     return () => clearInterval(timer);
   }, []);
 
+
+
   const rows = useMemo(() => {
     const organizations = organizationsQuery.data?.organizations || [];
     return organizations.map((org) => {
@@ -60,6 +73,7 @@ const GlobalHomeView = () => {
         adminName: owner?.name || "",
         adminEmail: owner?.email || "",
         inviteStatus: org.inviteStatus || null,
+        slug : org.slug || " ",
         inviteEmail: org.inviteEmail || org?.metadata?.orgAdminEmail || "",
         pendingTime,
         inviteExpired: org.inviteStatus === "expired" || (org.inviteStatus === "pending" && !pendingTime),
@@ -128,7 +142,7 @@ const GlobalHomeView = () => {
 
 
   const handleOrganizationClick = (row) => {
-    console.log("Organization clicked:", row);
+     Navigate(`/organization/${row.slug}/${row.id}`);
   }
 
   const isLoading = organizationsQuery.isLoading;
