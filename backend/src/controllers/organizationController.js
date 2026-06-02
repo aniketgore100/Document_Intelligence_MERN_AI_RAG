@@ -43,12 +43,21 @@ export const getOrganizations = async(req, res, next) => {
 
 
 
-export const getRolesAndPermission = async(req, res, next) => {
+export const getOrgById = async(req, res, next) => {
   try{
-    const {owner} = req.body;
-    const result = await organizationService.getRolesAndPermission(owner);
-    return res.status(200).json(result);
+    
+    const { id, slug } = req.params;    
+    const result = await organizationService.getOrgById(id, slug);
+    console.log("Fetched organization:", result);
+
+    return res.status(200).json({
+      messages : "Organization fetched successfully",
+      organization: result,
+    });
+
+
   }catch(error){
+    console.error("Error fetching organization by ID and slug:", error);
     next(error);
   }
 }

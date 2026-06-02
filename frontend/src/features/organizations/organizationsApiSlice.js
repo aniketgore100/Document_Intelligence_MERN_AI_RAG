@@ -2,6 +2,8 @@ import { apiSlice } from "../../services/api";
 
 export const organizationsApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+
+
     getOrganizations: builder.query({
       query: ({ page = 1, limit = 20, status } = {}) => ({
         url: "organizations/getOrgs",
@@ -14,6 +16,8 @@ export const organizationsApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ["Organizations"],
     }),
+
+
     createOrganization: builder.mutation({
       query: (payload) => ({
         url: "organizations/createOrg",
@@ -22,7 +26,16 @@ export const organizationsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Organizations"],
     }),
+
+    getOrganizationById: builder.query({
+      query: ({ id, slug }) => ({
+        url: `organizations/${id}/${slug}`,
+        method: "GET",
+      }),
+      invalidatesTags: ["Organizations"],
+    }),
+    
   }),
 });
 
-export const { useGetOrganizationsQuery, useCreateOrganizationMutation } = organizationsApiSlice;
+export const { useGetOrganizationsQuery, useCreateOrganizationMutation, useGetOrganizationByIdQuery } = organizationsApiSlice;

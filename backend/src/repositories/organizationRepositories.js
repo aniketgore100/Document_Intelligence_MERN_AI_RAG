@@ -2,8 +2,16 @@ import Organization from "../models/Organization.js";
 
 export class OrganizationRepository{
 
-    async findBySlug(slug){
-        return Organization.findOne({slug});
+    async findByIdSlug(id, slug){
+    return Organization.findOne({ _id: id, slug })
+    .populate({
+      path: "Owner",
+      select: "name email role",
+      populate: {
+        path: "role",
+        select: "name permissions",
+      },
+    });
     }
 
     async create(data, options = {}){

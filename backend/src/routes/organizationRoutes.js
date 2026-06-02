@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { body, query } from "express-validator";
-import { createOrganization, getOrganizations,getRolesAndPermission } from "../controllers/organizationController.js";
+import { createOrganization, getOrganizations,getOrgById } from "../controllers/organizationController.js";
 import { protect } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { authorize } from "../middleware/authorize.js";
@@ -54,6 +54,6 @@ router.get(
   getOrganizations
 );
 
-router.get("/r&p/:id", protect, authorize(ACTIONS.ORGANIZATION.READ), getRolesAndPermission);
+router.get("/:id/:slug", protect, authorize(ACTIONS.ORGANIZATION.READ), getOrgById);
 
 export default router;

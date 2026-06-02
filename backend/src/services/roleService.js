@@ -6,6 +6,7 @@ import { getAllowedPermissionsForRole } from '../constants/rolePermissionMap.js'
 const GLOBAL_ADMIN_MANAGED_ROLES = new Set([ROLES.ORG_ADMIN]);
 
 export class RoleService {
+
   constructor({ roleRepository = new RoleRepository() } = {}) {
     this.roleRepository = roleRepository;
   }
@@ -109,5 +110,15 @@ export class RoleService {
 
     console.log('Normalized roles:', normalizedRoles);
     return normalizedRoles;
+  }
+
+  async getRoleById(id) {
+    const role = await this.roleRepository.findById(id);
+    if (!role) {
+      const err = new Error('Role not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    return role;
   }
 }

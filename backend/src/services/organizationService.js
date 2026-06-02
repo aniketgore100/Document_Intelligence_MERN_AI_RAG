@@ -1,6 +1,7 @@
 import { AuthRepository } from "../repositories/authRepository.js";
 import { OrganizationRepository } from "../repositories/organizationRepositories.js";
 import { OrganizationInviteService } from "./organizationInviteService.js";
+import { RoleRepository } from "../repositories/roleRepository.js";
 import { ROLES } from "../constants/roles.js";
 
 export class OrganizationService {
@@ -9,11 +10,13 @@ export class OrganizationService {
     organizationRepository = new OrganizationRepository(),
     organizationInviteService = new OrganizationInviteService(),
     authRepository = new AuthRepository(),
+    roleRepository = new RoleRepository(),
     
   } = {}) {
     this.organizationRepository = organizationRepository;
     this.organizationInviteService = organizationInviteService;
     this.authRepository = authRepository;
+    this.roleRepository = roleRepository;
   }
 
   slugify(name) {
@@ -168,9 +171,12 @@ export class OrganizationService {
     return this.organizationRepository.findById(id);
   }
 
-  async getRolesAndPermission(owner){
-    const user = await this.authRepository.findById(owner);
-    console.log("user :: ", user);
-    
+  async getOrgById(id, slug){
+    const org = await this.organizationRepository.findByIdSlug(id, slug);
+    if(!org){
+      return "Organization not found"
+    };
+
+    return org;
   };  
 }
