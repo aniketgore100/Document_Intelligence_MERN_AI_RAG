@@ -1,10 +1,8 @@
-import { ChevronRight, Home, Layers3, Menu, Plus, ShieldCheck } from "lucide-react";
+import { ChevronRight, Home, Layers3, Menu, Plus } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { skipToken } from "@reduxjs/toolkit/query";
 import ThemeToggle from "./ThemeToggle";
 import { formatRoleName } from "../../utils/formatRoleName";
 import { ROLES } from "../../constants/roles";
-import { useGetOrganizationsQuery } from "../../features/organizations/organizationsApiSlice";
 
 const toTitle = (segment) => segment.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -12,18 +10,17 @@ const isObjectId = (str) => /^[a-f\d]{24}$/i.test(str);
 
 const toPathBreadcrumbs = (pathname) => {
   const segments = pathname.split("/").filter(Boolean);
-  const filteredSegments = isObjectId(segments[segments.length - 1])? segments.slice(0, -1): segments;
+  const filteredSegments = isObjectId(segments[segments.length - 1]) ? segments.slice(0, -1) : segments;
 
   return filteredSegments.map((seg, idx) => ({
     label: toTitle(seg),
     path: `/${filteredSegments.slice(0, idx + 1).join("/")}`,
     isLast: idx === filteredSegments.length - 1,
   }));
-  
+
 };
 
 const getHomeHeading = (roleName) => {
-  if (roleName === ROLES.GLOBAL_ADMIN) return "Global Admin Dashboard";
   if (roleName === ROLES.ORG_ADMIN) return "Organization Admin Dashboard";
   if (roleName === ROLES.DEPT_ADMIN) return "Department Admin Dashboard";
   return "User Dashboard";
@@ -54,14 +51,17 @@ const UserBadge = ({ user, initials }) => (
 );
 
 const Navbar = ({ user, onMenuToggle }) => {
+
   const location = useLocation();
+
+  const routeDepartmentName = location.state?.departmentName;
+
   const initials = user?.name
     ?.split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase();
 
-  const isRolesPage = location.pathname === "/roles";
   const isGlobalAdminHome = location.pathname === "/home" && user?.roleName === ROLES.GLOBAL_ADMIN;
   const isOrgAdminHome = location.pathname === "/home" && user?.roleName === ROLES.ORG_ADMIN;
   const isOrgAdminDepartments = location.pathname === "/departments" && user?.roleName === ROLES.ORG_ADMIN;
@@ -69,24 +69,24 @@ const Navbar = ({ user, onMenuToggle }) => {
 
   const departmentDisplayName = resolveDepartmentName(user);
 
-  const orgListQueryArg = isOrgAdminHome ? { page: 1, limit: 100 } : skipToken;
-  const { data: orgData } = useGetOrganizationsQuery(orgListQueryArg);
-
   const orgAdminOrganizationName =
-    orgData?.organizations?.find((org) => {
-      const ownerId = typeof org?.Owner === "object" ? org.Owner?._id : org?.Owner;
-      return String(ownerId || "") === String(user?.id || "");
-    })?.name ||
-    orgData?.organizations?.[0]?.name ||
+    user?.organizationName ||
+    user?.organization?.name ||
+    user?.membership?.organization?.name ||
     "Organization Dashboard";
 
   const defaultCrumbs = toPathBreadcrumbs(location.pathname);
   const isHomePage = location.pathname === "/home";
+  const isDepartmentDetailsPage =
+    location.pathname.startsWith("/department/");
+
   const pageName = isHomePage
     ? getHomeHeading(user?.roleName)
-    : defaultCrumbs.length
-      ? defaultCrumbs[defaultCrumbs.length - 1].label
-      : "Workspace";
+    : isDepartmentDetailsPage && routeDepartmentName
+      ? routeDepartmentName
+      : defaultCrumbs.length
+        ? defaultCrumbs[defaultCrumbs.length - 1].label
+        : "Workspace";
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-transparent px-2 py-2 md:px-3 dark:border-slate-700/40">
@@ -101,45 +101,7 @@ const Navbar = ({ user, onMenuToggle }) => {
         </button>
       </div>
 
-      {isRolesPage ? (
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">Role and Permission Management</h1>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Define, review, and maintain role-based access controls across your workspace.</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <ThemeToggle />
-              <UserBadge user={user} initials={initials} />
-            </div>
-          </div>
-
-          <div className="w-full border-t border-slate-200/80 dark:border-slate-700/80" />
-
-          <div className="flex items-center justify-between gap-3 pr-1 md:pr-3">
-            <nav className="flex items-center gap-1 text-xs" aria-label="Breadcrumb">
-              <Link to="/home" className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">
-                <Home size={13} />
-                <span>Home</span>
-              </Link>
-              <ChevronRight size={12} className="text-slate-400" />
-              <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
-                <ShieldCheck size={13} />
-                <span>Roles & Permissions</span>
-              </span>
-            </nav>
-
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new Event("open-create-role"))}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
-            >
-              <Plus size={13} />
-              Create Role
-            </button>
-          </div>
-        </div>
-      ) : isGlobalAdminHome ? (
+      {isGlobalAdminHome ? (
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -261,14 +223,26 @@ const Navbar = ({ user, onMenuToggle }) => {
                     {crumb.isLast ? (
                       <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
                         <Layers3 size={13} />
-                        <span>{crumb.label}</span>
+                        <span>
+                          {crumb.isLast &&
+                            isDepartmentDetailsPage &&
+                            routeDepartmentName
+                            ? routeDepartmentName
+                            : crumb.label}
+                        </span>
                       </span>
                     ) : (
                       <Link
                         to={crumb.path}
                         className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                       >
-                        <span>{crumb.label}</span>
+                        <span>
+                          {crumb.isLast &&
+                            isDepartmentDetailsPage &&
+                            routeDepartmentName
+                            ? routeDepartmentName
+                            : crumb.label}
+                        </span>
                       </Link>
                     )}
                   </div>

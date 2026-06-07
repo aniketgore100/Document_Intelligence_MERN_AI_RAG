@@ -115,6 +115,7 @@ export class DepartmentService {
     try {
       session.startTransaction();
 
+
       const department = await this.departmentRepository.create(
         {
           organization: organizationId,
@@ -125,6 +126,8 @@ export class DepartmentService {
         },
         { session }
       );
+
+
 
       const inviteResult = await this.organizationInviteService.createInvite({
         organizationId,
@@ -169,13 +172,16 @@ export class DepartmentService {
       throw err;
     }
 
+
+
     const orgAdminMembership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
       userId,
       roleName: ROLES.ORG_ADMIN,
     });
 
+
     if (orgAdminMembership) {
-      const organizationId = orgAdminMembership.organization;
+      const organizationId = orgAdminMembership.organization._id;
 
       const [departments, total] = await Promise.all([
         this.departmentRepository.listByOrganization({
@@ -241,7 +247,7 @@ export class DepartmentService {
       throw err;
     }
 
-    if (String(department.organization) !== String(membership.organization)) {
+    if (String(department.organization) !== String(membership.organization._id)) {
       const err = new Error("Not allowed to update this department");
       err.statusCode = 403;
       throw err;
@@ -296,7 +302,7 @@ export class DepartmentService {
       throw err;
     }
 
-    if (String(department.organization) !== String(membership.organization)) {
+    if (String(department.organization) !== String(membership.organization._id)) {
       const err = new Error("Not allowed to delete this department");
       err.statusCode = 403;
       throw err;
@@ -305,4 +311,38 @@ export class DepartmentService {
     await this.departmentRepository.deleteById(departmentId);
     return { success: true };
   }
+
+async getDepartmentById({orgId, deptId}) {
+
+  const department = await this.departmentRepository.findById(deptId);
+  
+  if (!department) {
+    const err = new Error("Department not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (String(department.organization) !== String(orgId)) {
+    const err = new Error("Department does not belong to this organization");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const departmentAdmin =
+    await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+      departmentId: deptId,
+      roleName: ROLES.DEPT_ADMIN,
+    });
+
+  return {
+    ...department.toPublic(),
+    admin: departmentAdmin
+      ? {
+          id: departmentAdmin.user?._id || departmentAdmin.user,
+          name: departmentAdmin.user?.name || null,
+          email: departmentAdmin.user?.email || null,
+        }
+      : null,
+  };
+}
 }

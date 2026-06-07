@@ -20,7 +20,15 @@ export class OrganizationMembershipRepository {
       roleName,
       status: "active",
       department: null,
-    });
+    }).populate("organization", "name slug");
+  }
+
+  findActiveOrgMembership({ userId }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      status: "active",
+      department: null,
+    }).populate("organization", "name slug");
   }
 
   findActiveDepartmentMembership({ userId, departmentId }) {
@@ -31,13 +39,21 @@ export class OrganizationMembershipRepository {
     });
   }
 
+  findActiveMembershipByRole({ userId, roleName }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      roleName,
+      status: "active",
+    }).populate("department", "name slug").populate("organization", "name slug");
+  }
+
   findActiveDepartmentMembershipByRole({ userId, roleName }) {
     return OrganizationMembership.findOne({
       user: userId,
       roleName,
       status: "active",
       department: { $ne: null },
-    }).populate("department", "name slug");
+    }).populate("department", "name slug").populate("organization", "name slug");
   }
 
   listDepartmentMembersByRole({ organizationId, departmentId, roleName, status = "active" }) {
@@ -49,5 +65,16 @@ export class OrganizationMembershipRepository {
     })
       .populate("user", "name email")
       .sort({ createdAt: -1 });
+  }
+
+  findById(id) {
+    return OrganizationMembership.findById(id)
+      .populate("user", "name email")
+      .populate("department", "name slug")
+      .populate("organization", "name slug");
+  }
+
+  save(membershipDoc) {
+    return membershipDoc.save();
   }
 }

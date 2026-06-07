@@ -2,6 +2,7 @@ export const ACTIONS = Object.freeze({
   ORGANIZATION: Object.freeze({
     CREATE: 'organization:create',
     READ: 'organization:read',
+    ANALYTICS_READ: 'organization:analytics:read',
   }),
   DEPARTMENT: Object.freeze({
     CREATE: 'department:create',
@@ -9,11 +10,13 @@ export const ACTIONS = Object.freeze({
     UPDATE: 'department:update',
     DELETE: 'department:delete',
   }),
-
-  ROLE: Object.freeze({
-    CREATE: 'role:create',
-    READ: 'role:read',
-    UPDATE: 'role:update',
+  DOCUMENT: Object.freeze({
+    CREATE: 'document:create',
+    READ: 'document:read',
+    UPDATE: 'document:update',
+    DELETE: 'document:delete',
+    ASSIGN: 'document:assign',
+    READ_ASSIGNED: 'document:read:assigned',
   }),
 
   USER : Object.freeze({
@@ -22,11 +25,11 @@ export const ACTIONS = Object.freeze({
     DELETE : 'user:delete',
     UPDATE : 'user:update'
   }),
-  
-  PERMISSION: Object.freeze({
-    CREATE: 'permission:create',
-    UPDATE: 'permission:update',
-    DELETE: 'permission:delete',
-    READ: 'permission:read',
+  ACCESS: Object.freeze({
+    READ: 'access:read',
+    UPDATE: 'access:update',
+  }),
+  PROFILE: Object.freeze({
+    UPDATE: 'profile:update',
   }),
 });

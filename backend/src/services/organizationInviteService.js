@@ -6,7 +6,7 @@ import { AuthRepository } from "../repositories/authRepository.js";
 import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { ROLES } from "../constants/roles.js";
-import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
+import { getDefaultPermissionsForRole } from "../constants/permissions.js";
 // import { inviteEmailQueue } from "../queue/inviteQueue.js";
 
 
@@ -72,30 +72,12 @@ export class OrganizationInviteService {
   }
 
   async ensureRole(roleName) {
-    const canonicalPermissions = [...getAllowedPermissionsForRole(roleName)];
     let roleDoc = await this.roleRepository.findByName(roleName);
-    if (roleDoc) {
-      const currentPermissions = Array.isArray(roleDoc.permissions)
-        ? [...new Set(roleDoc.permissions.map((permission) => permission?.trim()).filter(Boolean))]
-        : [];
-      const hasDrift =
-        currentPermissions.length !== canonicalPermissions.length ||
-        currentPermissions.some((permission, index) => permission !== canonicalPermissions[index]);
+    if (roleDoc) return roleDoc;
 
-      if (hasDrift) {
-        roleDoc.permissions = canonicalPermissions;
-        roleDoc = await this.roleRepository.save(roleDoc);
-      }
-
-      return roleDoc;
-    }
-
-    roleDoc = await this.roleRepository.create({
+    return this.roleRepository.create({
       name: roleName,
-      permissions: canonicalPermissions,
     });
-
-    return roleDoc;
   }
 
 
@@ -118,23 +100,29 @@ export class OrganizationInviteService {
     }
 
     const organization = await this.organizationRepository.findById(organizationId);
+
+
     if (!organization) {
       const err = new Error("Organization not found");
       err.statusCode = 404;
       throw err;
     }
-
+    
     if (departmentId) {
       const department = await this.departmentRepository.findByIdPlain(
         departmentId,
         session ? { session } : {}
       );
+
+      console.log("Ids :: ", department.organization, organizationId._id);
+      console.log("check equality :: ", (department.organization.equals(organizationId._id)));
+
       if (!department) {
         const err = new Error("Department not found");
         err.statusCode = 404;
         throw err;
       }
-      if (String(department.organization) !== String(organizationId)) {
+      if (String(department.organization) !== String(organizationId._id)) {
         const err = new Error("Department does not belong to organization");
         err.statusCode = 400;
         throw err;
@@ -370,6 +358,7 @@ export class OrganizationInviteService {
         user: user._id,
         organization: invite.organization?._id,
         roleName: invite.roleName,
+        permissions: getDefaultPermissionsForRole(invite.roleName),
         department: invite.department?._id || null,
         status: "active",
         invitedBy: invite.invitedBy?._id || invite.invitedBy || null,
@@ -396,37 +385,80 @@ export class OrganizationInviteService {
       throw err;
     }
 
-    if (requesterRoleName !== ROLES.DEPT_ADMIN) {
-      const err = new Error("Only department admin can view department users");
+    const department = await this.departmentRepository.findByIdPlain(departmentId);
+    if (!department) {
+      const err = new Error("Department not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const requesterMembership =
+      requesterRoleName === ROLES.ORG_ADMIN
+        ? await this.organizationMembershipRepository.findActiveOrgMembership({
+            userId: requestedBy,
+          })
+        : requesterRoleName === ROLES.DEPT_ADMIN
+          ? await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+              userId: requestedBy,
+              roleName: ROLES.DEPT_ADMIN,
+            })
+          : null;
+
+    if (!requesterMembership) {
+      const err = new Error("Only organization or department admin can view department users");
       err.statusCode = 403;
       throw err;
     }
 
-    const requesterMembership = await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
-      userId: requestedBy,
-      roleName: ROLES.DEPT_ADMIN,
-    });
-
     const requesterDepartmentId = requesterMembership?.department?._id || requesterMembership?.department;
-    if (!requesterMembership || String(requesterDepartmentId) !== String(departmentId)) {
+    if (
+      requesterRoleName === ROLES.DEPT_ADMIN &&
+      String(requesterDepartmentId) !== String(departmentId)
+    ) {
       const err = new Error("Cannot access users from another department");
       err.statusCode = 403;
       throw err;
     }
 
-    const memberships = await this.organizationMembershipRepository.listDepartmentMembersByRole({
-      organizationId: requesterMembership.organization,
-      departmentId,
-      roleName: ROLES.USER,
-      status: "active",
-    });
+    if (
+      requesterRoleName === ROLES.ORG_ADMIN &&
+      String(requesterMembership.organization) !== String(department.organization)
+    ) {
+      const err = new Error("Cannot access users outside your organization");
+      err.statusCode = 403;
+      throw err;
+    }
 
-    const invites = await this.inviteRepository.listByDepartmentAndRole({
-      organizationId: requesterMembership.organization,
-      departmentId,
-      roleName: ROLES.USER,
-      statuses: ["pending", "expired"],
-    });
+    const visibleRoleNames =
+      requesterRoleName === ROLES.ORG_ADMIN
+        ? [ROLES.DEPT_ADMIN, ROLES.USER]
+        : [ROLES.USER];
+
+    const memberships = (
+      await Promise.all(
+        visibleRoleNames.map((roleName) =>
+          this.organizationMembershipRepository.listDepartmentMembersByRole({
+            organizationId: requesterMembership.organization,
+            departmentId,
+            roleName,
+            status: "active",
+          })
+        )
+      )
+    ).flat();
+
+    const invites = (
+      await Promise.all(
+        visibleRoleNames.map((roleName) =>
+          this.inviteRepository.listByDepartmentAndRole({
+            organizationId: requesterMembership.organization,
+            departmentId,
+            roleName,
+            statuses: ["pending", "expired"],
+          })
+        )
+      )
+    ).flat();
 
     const inviteByEmail = new Map();
     for (const invite of invites) {
@@ -452,6 +484,7 @@ export class OrganizationInviteService {
       organization: membership.organization,
       department: membership.department,
       roleName: membership.roleName,
+      permissions: membership.permissions || [],
       status: membership.status,
       joinedAt: membership.joinedAt,
       createdAt: membership.createdAt,

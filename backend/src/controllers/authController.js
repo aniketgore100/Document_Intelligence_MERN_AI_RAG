@@ -32,5 +32,5 @@ export const login = async (req, res, next) => {
 };
 
 export const getMe = async (req, res) => {
-  res.json(authService.getMe(req.user));
+  res.json(authService.getMe(req.user, req.auth));
 };

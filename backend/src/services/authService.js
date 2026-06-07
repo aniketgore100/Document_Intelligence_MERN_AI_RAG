@@ -3,7 +3,7 @@ import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { signToken } from "../utils/jwt.js";
 import { ROLES } from "../constants/roles.js";
-import { getAllowedPermissionsForRole } from "../constants/rolePermissionMap.js";
+import { getDefaultPermissionsForRole } from "../constants/permissions.js";
 
 export class AuthService {
   
@@ -15,20 +15,6 @@ export class AuthService {
     this.authRepository = authRepository;
     this.roleRepository = roleRepository;
     this.organizationMembershipRepository = organizationMembershipRepository;
-  }
-
-  normalizePermissions(permissions) {
-    return [
-      ...new Set(
-        (Array.isArray(permissions) ? permissions : [])
-          .map((permission) => permission?.trim())
-          .filter(Boolean)
-      ),
-    ];
-  }
-
-  getCanonicalPermissions(roleName) {
-    return [...getAllowedPermissionsForRole(roleName)];
   }
 
   async register({ name, email, password, role }) {
@@ -45,28 +31,16 @@ export class AuthService {
       const roleName = role.trim();
       let roleDoc = await this.roleRepository.findByName(roleName);
 
-      if (roleName === ROLES.GLOBAL_ADMIN) {
-        const canonicalPermissions = this.getCanonicalPermissions(ROLES.GLOBAL_ADMIN);
-        if (!roleDoc) {
-          roleDoc = await this.roleRepository.create({
-            name: ROLES.GLOBAL_ADMIN,
-            permissions: canonicalPermissions,
-          });
-        } else {
-          const currentPermissions = this.normalizePermissions(roleDoc.permissions || []);
-          const hasDrift =
-            currentPermissions.length !== canonicalPermissions.length ||
-            currentPermissions.some((permission, index) => permission !== canonicalPermissions[index]);
-
-          if (hasDrift) {
-            roleDoc.permissions = canonicalPermissions;
-            roleDoc = await this.roleRepository.save(roleDoc);
-          }
+      if (!roleDoc) {
+        if (!Object.values(ROLES).includes(roleName)) {
+          const err = new Error("Invalid role");
+          err.statusCode = 400;
+          throw err;
         }
-      } else if (!roleDoc) {
-        const err = new Error("Invalid role");
-        err.statusCode = 400;
-        throw err;
+
+        roleDoc = await this.roleRepository.create({
+          name: roleName,
+        });
       }
 
       roleId = roleDoc?._id || null;
@@ -91,26 +65,44 @@ export class AuthService {
     }
 
     const roleDoc = user.role ? await this.roleRepository.findById(user.role) : null;
-    const departmentMembership =
-      roleDoc?.name === ROLES.DEPT_ADMIN
-        ? await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
-            userId: user._id,
-            roleName: ROLES.DEPT_ADMIN,
-          })
-        : null;
+    const membership =
+      roleDoc?.name === ROLES.ORG_ADMIN
+        ? await this.organizationMembershipRepository.findActiveOrgMembership({ userId: user._id })
+        : roleDoc?.name
+          ? await this.organizationMembershipRepository.findActiveMembershipByRole({
+              userId: user._id,
+              roleName: roleDoc.name,
+            })
+          : null;
     const token = signToken({ id: user._id });
+    const permissions = membership?.permissions?.length
+      ? membership.permissions
+      : getDefaultPermissionsForRole(roleDoc?.name || null);
 
     return {
       user: {
         ...user.toPublic(),
         roleName: roleDoc?.name || null,
-        departmentName: departmentMembership?.department?.name || null,
+        permissions,
+        organizationId: membership?.organization?._id || membership?.organization || null,
+        organizationName: membership?.organization?.name || null,
+        departmentId: membership?.department?._id || membership?.department || null,
+        departmentName: membership?.department?.name || null,
       },
       token,
     };
   }
 
-  getMe(user) {
-    return { user: user.toPublic() };
+  getMe(user, auth = {}) {
+    return {
+      user: {
+        ...user.toPublic(),
+        roleName: auth.roleName || user.roleName || null,
+        permissions: auth.permissions || [],
+        organizationId: auth.organizationId || null,
+        organizationName: auth.organizationName || null,
+        departmentId: auth.departmentId || null,
+      },
+    };
   }
 }

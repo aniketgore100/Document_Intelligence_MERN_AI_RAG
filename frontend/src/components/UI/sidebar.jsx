@@ -5,7 +5,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  ShieldCheck,
   Users,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -20,7 +19,6 @@ const orgAdminMenuItems = [
 
 const globalAdminMenuItems = [
   { name: "Home", icon: Home, path: "/home" },
-  { name: "Role Management", icon: ShieldCheck, path: "/roles" },
   { name: "Settings", icon: Settings },
 ];
 

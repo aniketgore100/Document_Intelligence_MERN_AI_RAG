@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux';
 import Login from './pages/Login';
 import RoleProtectedRoute from './components/UI/RoleProtectedRoute';
 import ProtectedRoute from './components/UI/ProtectedRoute';
-import RolesList from './pages/RoleList';
 import AppLayout from './components/UI/AppLayout';
 import Home from './pages/Home';
 import { ROLES } from './constants/roles';
@@ -13,6 +12,7 @@ import OrgAdminHomeView from './components/home/OrgAdminHomeView';
 import OrgAdminDocuments from './pages/OrgAdminDocuments';
 import OrgAdminSettings from './pages/OrgAdminSettings';
 import Organizations from './pages/Organizations';
+import Department from './pages/Department';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -29,6 +29,7 @@ const App = () => {
 
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ORG_ADMIN]} />}>
             <Route path="/departments" element={<OrgAdminHomeView />} />
+            <Route path="/department/:orgId/:deptId" element={<Department />} />  
           </Route>
 
           <Route path="/documents" element={<OrgAdminDocuments />} />
@@ -37,11 +38,7 @@ const App = () => {
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.DEPT_ADMIN]} />}>
             <Route path="/department/users" element={<DepartmentUsers />} />
           </Route>
-
-          <Route element={<RoleProtectedRoute allowedRoles={[ROLES.GLOBAL_ADMIN]} />}>
-            <Route path="/roles" element={<RolesList />} />
-          </Route>
-
+    
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.GLOBAL_ADMIN]} />}>
             <Route path="/organization/:slug/:id" element={<Organizations />} />
           </Route>

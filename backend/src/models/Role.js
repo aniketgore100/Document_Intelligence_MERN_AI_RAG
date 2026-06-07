@@ -8,10 +8,6 @@ const roleSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    permissions: [{
-      type: String,
-      trim: true,
-    }],
   },
   { timestamps: true }
 );

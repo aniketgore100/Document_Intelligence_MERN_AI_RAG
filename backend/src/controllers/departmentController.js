@@ -68,3 +68,23 @@ export const deleteDepartment = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getDepartmentById = async(req, res, next) => {
+  try{
+    const { orgId, deptId } = req.params;
+
+    const department = await departmentService.getDepartmentById({
+      orgId : orgId,
+      deptId : deptId,
+    })
+
+
+    return res.status(200).json({
+      message : "Department details fetched successfully",
+      department : department
+    });
+  }catch(error){
+    console.error("Error fetching department details :: ", error);
+    next(error);
+  }
+}

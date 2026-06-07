@@ -1,7 +1,37 @@
 import { ACTIONS } from "../constants/actions.js";
 import { ROLES } from "../constants/roles.js";
 
-export const can = ({ roleName, permissions }, action) => {
+const ROLE_ACTION_MAP = new Map([
+  [
+    ROLES.GLOBAL_ADMIN,
+    new Set([
+      ACTIONS.ORGANIZATION.CREATE,
+      ACTIONS.ORGANIZATION.READ,
+      ACTIONS.ORGANIZATION.ANALYTICS_READ,
+    ]),
+  ],
+  [
+    ROLES.ORG_ADMIN,
+    new Set([
+      ACTIONS.DEPARTMENT.CREATE,
+      ACTIONS.DEPARTMENT.READ,
+      ACTIONS.DEPARTMENT.UPDATE,
+      ACTIONS.DEPARTMENT.DELETE,
+      ACTIONS.USER.READ,
+      ACTIONS.DOCUMENT.CREATE,
+      ACTIONS.DOCUMENT.READ,
+      ACTIONS.DOCUMENT.UPDATE,
+      ACTIONS.DOCUMENT.DELETE,
+      ACTIONS.DOCUMENT.ASSIGN,
+      ACTIONS.ACCESS.READ,
+      ACTIONS.ACCESS.UPDATE,
+    ]),
+  ],
+]);
+
+const PERMISSION_BASED_ROLES = new Set([ROLES.DEPT_ADMIN, ROLES.USER]);
+
+export const can = ({ roleName, permissions = [] }, action) => {
   if (!action) {
     return {
       allowed: false,
@@ -9,37 +39,39 @@ export const can = ({ roleName, permissions }, action) => {
     };
   }
 
-  const globalAdminOnlyActions = new Set([
-    ACTIONS.ROLE.CREATE,
-    ACTIONS.ROLE.UPDATE,
-    ACTIONS.ROLE.READ,
-    ACTIONS.PERMISSION.CREATE,
-    ACTIONS.PERMISSION.UPDATE,
-    ACTIONS.PERMISSION.DELETE,
-    ACTIONS.PERMISSION.READ,
-  ]);
+  const allowedActions = ROLE_ACTION_MAP.get(roleName);
+  if (allowedActions) {
+    if (!allowedActions.has(action)) {
+      return {
+        allowed: false,
+        reason: "Insufficient Role",
+      };
+    }
 
-  if (globalAdminOnlyActions.has(action) && roleName !== ROLES.GLOBAL_ADMIN) {
     return {
-      allowed: false,
-      reason: "Only global admin can manage organization-level roles/permissions",
+      allowed: true,
     };
   }
 
-  const allowedActions = new Set(
-    Array.isArray(permissions)
-      ? permissions.filter((permission) => typeof permission === "string")
-      : []
-  );
-
-  if (!allowedActions.has(action) && !allowedActions.has("*")) {
+  if (!PERMISSION_BASED_ROLES.has(roleName)) {
     return {
       allowed: false,
       reason: "Insufficient Role",
     };
   }
 
-  return {
-    allowed: true,
-  };
+  const allowedPermissions = new Set(
+    Array.isArray(permissions)
+      ? permissions.filter((permission) => typeof permission === "string")
+      : []
+  );
+
+  if (!allowedPermissions.has(action)) {
+    return {
+      allowed: false,
+      reason: "Insufficient Permission",
+    };
+  }
+
+  return { allowed: true };
 };

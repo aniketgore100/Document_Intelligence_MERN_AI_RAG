@@ -9,10 +9,10 @@ export class OrganizationRepository{
       select: "name email role",
       populate: {
         path: "role",
-        select: "name permissions",
+        select: "name",
       },
     });
-    }
+  }
 
     async create(data, options = {}){
         const org = await Organization.create([data], options);

@@ -1,7 +1,9 @@
 import { apiSlice } from "../../services/api";
 
 export const departmentsApiSlice = apiSlice.injectEndpoints({
+
   endpoints: (builder) => ({
+
     getDepartments: builder.query({
       query: ({ page = 1, limit = 50, status } = {}) => ({
         url: "departments/list",
@@ -14,6 +16,8 @@ export const departmentsApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ["Departments"],
     }),
+
+
     createDepartment: builder.mutation({
       query: (payload) => ({
         url: "departments/create",
@@ -22,7 +26,16 @@ export const departmentsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Departments"],
     }),
+
+
+      getDepartmentById: builder.query({
+        query: ({ orgId, deptId }) => ({
+          url: `departments/department/${orgId}/${deptId}`,
+          method: "GET",
+        }),
+        providesTags: (result, error, { deptId }) => [{ type: "Department", id: deptId }],
+      }),
   }),
 });
 
-export const { useGetDepartmentsQuery, useCreateDepartmentMutation } = departmentsApiSlice;
+export const { useGetDepartmentsQuery, useCreateDepartmentMutation, useGetDepartmentByIdQuery } = departmentsApiSlice;

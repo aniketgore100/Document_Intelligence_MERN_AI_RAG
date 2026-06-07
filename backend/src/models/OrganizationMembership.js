@@ -20,6 +20,10 @@ const organizationMembershipSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    permissions: {
+      type: [String],
+      default: [],
+    },
     department: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Department",
@@ -59,6 +63,7 @@ organizationMembershipSchema.methods.toPublic = function () {
     user: this.user,
     organization: this.organization,
     roleName: this.roleName,
+    permissions: this.permissions || [],
     department: this.department,
     status: this.status,
     invitedBy: this.invitedBy,

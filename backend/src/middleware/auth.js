@@ -1,6 +1,10 @@
 import { verifyToken } from '../utils/jwt.js';
 import User from '../models/User.js';
-import { getAllowedPermissionsForRole } from '../constants/rolePermissionMap.js';
+import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
+import { ROLES } from "../constants/roles.js";
+import { getDefaultPermissionsForRole } from "../constants/permissions.js";
+
+const organizationMembershipRepository = new OrganizationMembershipRepository();
 
 export const protect = async (req, res, next) => {
   try {
@@ -20,16 +24,26 @@ export const protect = async (req, res, next) => {
 
     req.user = user;
     const roleName = user.role?.name || null;
-    const canonicalPermissions = roleName ? getAllowedPermissionsForRole(roleName) : [];
+    const membership =
+      roleName === ROLES.ORG_ADMIN
+        ? await organizationMembershipRepository.findActiveOrgMembership({ userId: user._id })
+        : roleName
+          ? await organizationMembershipRepository.findActiveMembershipByRole({
+              userId: user._id,
+              roleName,
+            })
+          : null;
+    const permissions = membership?.permissions?.length
+      ? membership.permissions
+      : getDefaultPermissionsForRole(roleName);
     req.auth = {
       userId: user._id.toString(),
       roleId: user.role?._id?.toString() || null,
       roleName,
-      permissions: canonicalPermissions.length
-        ? canonicalPermissions
-        : Array.isArray(user.role?.permissions)
-          ? user.role.permissions
-          : [],
+      organizationId: membership?.organization?._id?.toString?.() || membership?.organization?.toString?.() || null,
+      organizationName: membership?.organization?.name || null,
+      departmentId: membership?.department?._id?.toString?.() || membership?.department?.toString?.() || null,
+      permissions,
     };
 
     next();

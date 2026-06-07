@@ -8,9 +8,9 @@ import rateLimit from 'express-rate-limit';
 import connectDB from './src/config/db.js';
 import authRoutes from './src/routes/authRoutes.js';
 import organizationRoutes from './src/routes/organizationRoutes.js';
-import roleRoutes from './src/routes/roleRoutes.js';
 import organizationInviteRoutes from './src/routes/organizationInviteRoutes.js';
 import departmentRoutes from './src/routes/departmentRoutes.js';
+import membershipRoutes from './src/routes/membershipRoutes.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import logger from './src/utils/logger.js';
 import dotenv from 'dotenv';
@@ -52,7 +52,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/organization-invites', organizationInviteRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/roles', roleRoutes);
+app.use('/api/memberships', membershipRoutes);
 
 // ── Error handling ─────────────────────────────────────────────────────────
 app.use(notFound);

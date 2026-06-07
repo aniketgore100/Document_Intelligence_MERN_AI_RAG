@@ -9,6 +9,7 @@ import {
   deleteDepartment,
   listDepartments,
   updateDepartment,
+  getDepartmentById
 } from "../controllers/departmentController.js";
 
 const router = Router();
@@ -81,5 +82,13 @@ router.delete(
   validate([param("id").isMongoId().withMessage("Invalid department id")]),
   deleteDepartment
 );
+
+router.get("/department/:orgId/:deptId", protect, 
+    authorize(ACTIONS.DEPARTMENT.READ),
+    validate([
+      param("orgId").isMongoId().withMessage("Invalid organization id"),
+      param("deptId").isMongoId().withMessage("Invalid department id"),
+    ]), getDepartmentById
+)
 
 export default router;
