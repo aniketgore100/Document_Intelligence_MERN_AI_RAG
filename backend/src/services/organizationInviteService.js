@@ -13,6 +13,7 @@ import { getDefaultPermissionsForRole } from "../constants/permissions.js";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const DEFAULT_INVITE_TTL_HOURS = 1 / 60;
+const toId = (value) => value?._id || value;
 
 
 
@@ -91,6 +92,7 @@ export class OrganizationInviteService {
     roleName = ROLES.ORG_ADMIN,
     session = null,
   }) {
+    const resolvedOrganizationId = toId(organizationId);
 
     const normalizedEmail = this.normalizeEmail(email);
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
@@ -99,7 +101,7 @@ export class OrganizationInviteService {
       throw err;
     }
 
-    const organization = await this.organizationRepository.findById(organizationId);
+    const organization = await this.organizationRepository.findById(resolvedOrganizationId);
 
 
     if (!organization) {
@@ -114,15 +116,12 @@ export class OrganizationInviteService {
         session ? { session } : {}
       );
 
-      console.log("Ids :: ", department.organization, organizationId._id);
-      console.log("check equality :: ", (department.organization.equals(organizationId._id)));
-
       if (!department) {
         const err = new Error("Department not found");
         err.statusCode = 404;
         throw err;
       }
-      if (String(department.organization) !== String(organizationId._id)) {
+      if (String(department.organization) !== String(resolvedOrganizationId)) {
         const err = new Error("Department does not belong to organization");
         err.statusCode = 400;
         throw err;
@@ -159,7 +158,7 @@ export class OrganizationInviteService {
         roleName: ROLES.ORG_ADMIN,
       });
 
-      if (!inviterOrgMembership || String(inviterOrgMembership.organization) !== String(organizationId)) {
+      if (!inviterOrgMembership || String(toId(inviterOrgMembership.organization)) !== String(resolvedOrganizationId)) {
         const err = new Error("Invite scope is outside your organization");
         err.statusCode = 403;
         throw err;
@@ -189,7 +188,7 @@ export class OrganizationInviteService {
 
       if (
         !inviterDepartmentMembership ||
-        String(inviterDepartmentMembership.organization) !== String(organizationId) ||
+        String(toId(inviterDepartmentMembership.organization)) !== String(resolvedOrganizationId) ||
         String(inviterDepartmentId) !== String(departmentId)
       ) {
         const err = new Error("Invite scope is outside your department");
@@ -235,9 +234,6 @@ export class OrganizationInviteService {
 
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
-    console.log("invte link :: ", inviteLink);
-
-
     // await inviteEmailQueue.add(
     //   "invite.send",
     //   {
@@ -422,7 +418,7 @@ export class OrganizationInviteService {
 
     if (
       requesterRoleName === ROLES.ORG_ADMIN &&
-      String(requesterMembership.organization) !== String(department.organization)
+      String(toId(requesterMembership.organization)) !== String(toId(department.organization))
     ) {
       const err = new Error("Cannot access users outside your organization");
       err.statusCode = 403;
@@ -438,7 +434,7 @@ export class OrganizationInviteService {
       await Promise.all(
         visibleRoleNames.map((roleName) =>
           this.organizationMembershipRepository.listDepartmentMembersByRole({
-            organizationId: requesterMembership.organization,
+            organizationId: toId(requesterMembership.organization),
             departmentId,
             roleName,
             status: "active",
@@ -451,7 +447,7 @@ export class OrganizationInviteService {
       await Promise.all(
         visibleRoleNames.map((roleName) =>
           this.inviteRepository.listByDepartmentAndRole({
-            organizationId: requesterMembership.organization,
+            organizationId: toId(requesterMembership.organization),
             departmentId,
             roleName,
             statuses: ["pending", "expired"],

@@ -5,6 +5,7 @@ import { OrganizationInviteService } from "./organizationInviteService.js";
 import { ROLES } from "../constants/roles.js";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+const toId = (value) => value?._id || value;
 
 export class DepartmentService {
   constructor({
@@ -90,7 +91,7 @@ export class DepartmentService {
     }
 
     const orgAdminMembership = await this.getOrgAdminMembership(createdBy);
-    const organizationId = orgAdminMembership.organization;
+    const organizationId = toId(orgAdminMembership.organization);
     const slug = this.slugify(name);
 
     const existing = await this.departmentRepository.findBySlugInOrganization({
@@ -181,7 +182,7 @@ export class DepartmentService {
 
 
     if (orgAdminMembership) {
-      const organizationId = orgAdminMembership.organization._id;
+      const organizationId = toId(orgAdminMembership.organization);
 
       const [departments, total] = await Promise.all([
         this.departmentRepository.listByOrganization({
@@ -247,7 +248,7 @@ export class DepartmentService {
       throw err;
     }
 
-    if (String(department.organization) !== String(membership.organization._id)) {
+    if (String(department.organization) !== String(toId(membership.organization))) {
       const err = new Error("Not allowed to update this department");
       err.statusCode = 403;
       throw err;
@@ -256,7 +257,7 @@ export class DepartmentService {
     if (name && name.trim() && name.trim() !== department.name) {
       const slug = this.slugify(name);
       const existing = await this.departmentRepository.findBySlugInOrganization({
-        organizationId: department.organization,
+        organizationId: toId(department.organization),
         slug,
       });
       if (existing && String(existing._id) !== String(department._id)) {
@@ -302,7 +303,7 @@ export class DepartmentService {
       throw err;
     }
 
-    if (String(department.organization) !== String(membership.organization._id)) {
+    if (String(department.organization) !== String(toId(membership.organization))) {
       const err = new Error("Not allowed to delete this department");
       err.statusCode = 403;
       throw err;
@@ -322,7 +323,7 @@ async getDepartmentById({orgId, deptId}) {
     throw err;
   }
 
-  if (String(department.organization) !== String(orgId)) {
+  if (String(department.organization) !== String(toId(orgId))) {
     const err = new Error("Department does not belong to this organization");
     err.statusCode = 403;
     throw err;

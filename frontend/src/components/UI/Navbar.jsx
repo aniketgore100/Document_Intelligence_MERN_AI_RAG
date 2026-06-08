@@ -3,10 +3,17 @@ import { Link, useLocation } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 import { formatRoleName } from "../../utils/formatRoleName";
 import { ROLES } from "../../constants/roles";
+import { useGetDepartmentByIdQuery } from "../../features/departments/departmentsApiSlice";
 
 const toTitle = (segment) => segment.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const isObjectId = (str) => /^[a-f\d]{24}$/i.test(str);
+
+const getDepartmentRouteIds = (pathname) => {
+  const match = pathname.match(/^\/department\/([^/]+)\/([^/]+)$/);
+  if (!match) return null;
+  return { orgId: match[1], deptId: match[2] };
+};
 
 const toPathBreadcrumbs = (pathname) => {
   const segments = pathname.split("/").filter(Boolean);
@@ -26,12 +33,12 @@ const getHomeHeading = (roleName) => {
   return "User Dashboard";
 };
 
-const resolveDepartmentName = (user) =>
-  user?.departmentName ||
-  user?.department?.name ||
-  user?.membership?.departmentName ||
-  user?.membership?.department?.name ||
-  "Department Dashboard";
+const resolveOrganizationName = (user) =>
+  user?.organizationName ||
+  user?.organization?.name ||
+  user?.membership?.organizationName ||
+  user?.membership?.organization?.name ||
+  "Organization Dashboard";
 
 const UserBadge = ({ user, initials }) => (
   <div className="group relative flex items-center gap-2 px-1 py-0.5">
@@ -53,8 +60,12 @@ const UserBadge = ({ user, initials }) => (
 const Navbar = ({ user, onMenuToggle }) => {
 
   const location = useLocation();
-
-  const routeDepartmentName = location.state?.departmentName;
+  const departmentRouteIds = getDepartmentRouteIds(location.pathname);
+  const shouldFetchDepartmentName = Boolean(departmentRouteIds?.orgId && departmentRouteIds?.deptId);
+  const { data: departmentData } = useGetDepartmentByIdQuery(
+    departmentRouteIds || { orgId: "", deptId: "" },
+    { skip: !shouldFetchDepartmentName }
+  );
 
   const initials = user?.name
     ?.split(" ")
@@ -67,7 +78,8 @@ const Navbar = ({ user, onMenuToggle }) => {
   const isOrgAdminDepartments = location.pathname === "/departments" && user?.roleName === ROLES.ORG_ADMIN;
   const isDeptAdminHome = location.pathname === "/home" && user?.roleName === ROLES.DEPT_ADMIN;
 
-  const departmentDisplayName = resolveDepartmentName(user);
+  const organizationDisplayName = resolveOrganizationName(user);
+  const departmentDisplayName = departmentData?.department?.name || "Department";
 
   const orgAdminOrganizationName =
     user?.organizationName ||
@@ -77,13 +89,12 @@ const Navbar = ({ user, onMenuToggle }) => {
 
   const defaultCrumbs = toPathBreadcrumbs(location.pathname);
   const isHomePage = location.pathname === "/home";
-  const isDepartmentDetailsPage =
-    location.pathname.startsWith("/department/");
+  const isDepartmentDetailsPage = location.pathname.startsWith("/department/");
 
   const pageName = isHomePage
     ? getHomeHeading(user?.roleName)
-    : isDepartmentDetailsPage && routeDepartmentName
-      ? routeDepartmentName
+    : isDepartmentDetailsPage
+      ? organizationDisplayName
       : defaultCrumbs.length
         ? defaultCrumbs[defaultCrumbs.length - 1].label
         : "Workspace";
@@ -168,7 +179,7 @@ const Navbar = ({ user, onMenuToggle }) => {
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{departmentDisplayName}</h1>
+              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{organizationDisplayName}</h1>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage your department workspace from here.</p>
             </div>
             <div className="flex items-center gap-1.5">
@@ -215,38 +226,41 @@ const Navbar = ({ user, onMenuToggle }) => {
                 <span>Home</span>
               </Link>
 
-              {defaultCrumbs
-                .filter((crumb) => crumb.path !== "/home")
-                .map((crumb) => (
-                  <div key={crumb.path} className="inline-flex items-center gap-1">
-                    <ChevronRight size={12} className="text-slate-400" />
-                    {crumb.isLast ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
-                        <Layers3 size={13} />
-                        <span>
-                          {crumb.isLast &&
-                            isDepartmentDetailsPage &&
-                            routeDepartmentName
-                            ? routeDepartmentName
-                            : crumb.label}
+              {isDepartmentDetailsPage ? (
+                <>
+                  <ChevronRight size={12} className="text-slate-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-slate-500 dark:text-slate-400">
+                    <Layers3 size={13} />
+                    <span>{organizationDisplayName}</span>
+                  </span>
+                  <ChevronRight size={12} className="text-slate-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
+                    <Layers3 size={13} />
+                    <span>{departmentDisplayName}</span>
+                  </span>
+                </>
+              ) : (
+                defaultCrumbs
+                  .filter((crumb) => crumb.path !== "/home")
+                  .map((crumb) => (
+                    <div key={crumb.path} className="inline-flex items-center gap-1">
+                      <ChevronRight size={12} className="text-slate-400" />
+                      {crumb.isLast ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-800 dark:text-slate-100">
+                          <Layers3 size={13} />
+                          <span>{crumb.label}</span>
                         </span>
-                      </span>
-                    ) : (
-                      <Link
-                        to={crumb.path}
-                        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                      >
-                        <span>
-                          {crumb.isLast &&
-                            isDepartmentDetailsPage &&
-                            routeDepartmentName
-                            ? routeDepartmentName
-                            : crumb.label}
-                        </span>
-                      </Link>
-                    )}
-                  </div>
-                ))}
+                      ) : (
+                        <Link
+                          to={crumb.path}
+                          className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        >
+                          <span>{crumb.label}</span>
+                        </Link>
+                      )}
+                    </div>
+                  ))
+              )}
             </nav>
 
             {isOrgAdminDepartments ? (

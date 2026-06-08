@@ -70,35 +70,41 @@ const Documents = () => {
         })}
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <article className="surface rounded-3xl p-6 xl:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="title-lg">Platform Highlights</h2>
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-              Live
-            </span>
+      <section className="surface rounded-3xl p-6 md:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="title-lg">Platform Overview</h2>
+            <p className="mt-1 text-sm muted">Everything important in one compact workspace.</p>
           </div>
-          <div className="space-y-3">
-            {features.map((feature) => (
-              <div key={feature} className="flex items-start gap-3 rounded-2xl border bg-white/60 p-3 dark:bg-slate-900/45">
-                <CheckCircle2 size={18} className="mt-0.5 text-emerald-500" />
-                <p className="text-sm">{feature}</p>
-              </div>
-            ))}
-          </div>
-        </article>
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            Live
+          </span>
+        </div>
 
-        <article className="surface rounded-3xl p-6">
-          <h2 className="title-lg">Usage Trend</h2>
-          <p className="mt-1 text-sm muted">Document analysis activity by week</p>
-          <div className="mt-5 h-44 rounded-2xl border bg-gradient-to-br from-blue-50 to-white p-4 dark:from-slate-900 dark:to-slate-800">
-            <div className="flex h-full items-end gap-2">
-              {[36, 54, 42, 68, 72, 61, 84].map((v, i) => (
-                <div key={i} className="flex-1 rounded-t-xl bg-blue-500/80" style={{ height: `${v}%` }} />
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-2xl border bg-white/60 p-4 dark:bg-slate-900/45">
+            <div className="space-y-3">
+              {features.map((feature) => (
+                <div key={feature} className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/70 p-3 dark:border-slate-700 dark:bg-slate-900/60">
+                  <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-emerald-500" />
+                  <p className="text-sm leading-6">{feature}</p>
+                </div>
               ))}
             </div>
           </div>
-        </article>
+
+          <div className="rounded-2xl border bg-white/60 p-4 dark:bg-slate-900/45">
+            <h3 className="text-sm font-medium">Usage Trend</h3>
+            <p className="mt-1 text-sm muted">Document analysis activity by week</p>
+            <div className="mt-4 h-40 rounded-2xl border bg-gradient-to-br from-blue-50 to-white p-4 dark:from-slate-900 dark:to-slate-800">
+              <div className="flex h-full items-end gap-2">
+                {[36, 54, 42, 68, 72, 61, 84].map((v, i) => (
+                  <div key={i} className="flex-1 rounded-t-xl bg-blue-500/80" style={{ height: `${v}%` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </motion.div>
   );

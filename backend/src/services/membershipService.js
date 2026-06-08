@@ -2,6 +2,8 @@ import { OrganizationMembershipRepository } from "../repositories/organizationMe
 import { ROLES } from "../constants/roles.js";
 import { getManageablePermissionsForRole } from "../constants/permissions.js";
 
+const toId = (value) => value?._id || value;
+
 export class MembershipService {
   constructor({
     organizationMembershipRepository = new OrganizationMembershipRepository(),
@@ -37,7 +39,7 @@ export class MembershipService {
       throw err;
     }
 
-    if (String(targetMembership.organization?._id || targetMembership.organization) !== String(actorMembership.organization)) {
+    if (String(targetMembership.organization?._id || targetMembership.organization) !== String(toId(actorMembership.organization))) {
       const err = new Error("Cannot manage permissions outside your organization");
       err.statusCode = 403;
       throw err;

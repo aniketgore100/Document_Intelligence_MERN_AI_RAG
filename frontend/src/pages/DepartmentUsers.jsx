@@ -1,11 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { UserPlus, X } from "lucide-react";
+import { Check, Shield, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { useGetDepartmentsQuery } from "../features/departments/departmentsApiSlice";
 import {
   useCreateDepartmentUserInviteMutation,
   useGetDepartmentUsersQuery,
 } from "../features/invites/invitesApiSlice";
+import { useUpdateMembershipPermissionsMutation } from "../features/memberships/membershipsApiSlice";
+import { DEPARTMENT_PERMISSION_OPTIONS } from "../constants/permissions";
+import { ROLES } from "../constants/roles";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,9 +29,14 @@ const formatTimeRemaining = (expiresAt, nowTs) => {
 
 const DepartmentUsers = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isPermissionOpen, setIsPermissionOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [permissionError, setPermissionError] = useState("");
+  const [activePermissionRow, setActivePermissionRow] = useState(null);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [nowTs, setNowTs] = useState(Date.now());
+  const currentRoleName = useSelector((state) => state.auth.user?.roleName);
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 1000);
@@ -52,6 +61,8 @@ const DepartmentUsers = () => {
 
   const [createDepartmentUserInvite, { isLoading: isInviting }] =
     useCreateDepartmentUserInviteMutation();
+  const [updateMembershipPermissions, { isLoading: isSavingPermissions }] =
+    useUpdateMembershipPermissionsMutation();
 
   const rows = useMemo(() => {
     const users = usersData?.users || [];
@@ -59,9 +70,12 @@ const DepartmentUsers = () => {
 
     const userRows = users.map((member) => ({
       type: "active",
-      key: member.membershipId,
+      key: member.membershipId || member.id || member._id,
+      membershipId: member.membershipId || member.id || member._id,
       name: member.user?.name || "-",
       email: member.user?.email || "-",
+      roleName: member.roleName || member.role?.name || member.user?.roleName || member.user?.role?.name,
+      permissions: member.permissions || member.role?.permissions || member.user?.permissions || [],
       status: "active",
       joinedAt: member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "-",
       pendingTime: null,
@@ -93,10 +107,24 @@ const DepartmentUsers = () => {
     setIsInviteOpen(true);
   };
 
+  const openPermissionEditor = (row) => {
+    setActivePermissionRow(row);
+    setSelectedPermissions(Array.isArray(row.permissions) ? row.permissions : []);
+    setPermissionError("");
+    setIsPermissionOpen(true);
+  };
+
   const closeModal = () => {
     setIsInviteOpen(false);
     setEmail("");
     setInviteError("");
+  };
+
+  const closePermissionModal = () => {
+    setIsPermissionOpen(false);
+    setActivePermissionRow(null);
+    setSelectedPermissions([]);
+    setPermissionError("");
   };
 
   const handleInvite = async () => {
@@ -123,6 +151,38 @@ const DepartmentUsers = () => {
       setInviteError(err?.data?.message || "Failed to send invite");
     }
   };
+
+  const permissionOptions = useMemo(() => {
+    if (!activePermissionRow?.roleName) return [];
+    return DEPARTMENT_PERMISSION_OPTIONS[activePermissionRow.roleName] || [];
+  }, [activePermissionRow]);
+
+  const togglePermission = (permissionValue) => {
+    setSelectedPermissions((current) =>
+      current.includes(permissionValue)
+        ? current.filter((item) => item !== permissionValue)
+        : [...current, permissionValue]
+    );
+  };
+
+  const handlePermissionSave = async () => {
+    if (!activePermissionRow?.membershipId) {
+      setPermissionError("Membership context not found");
+      return;
+    }
+
+    try {
+      await updateMembershipPermissions({
+        membershipId: activePermissionRow.membershipId,
+        permissions: selectedPermissions,
+      }).unwrap();
+      closePermissionModal();
+    } catch (err) {
+      setPermissionError(err?.data?.message || "Failed to update permissions");
+    }
+  };
+
+  const canManagePermissions = currentRoleName === ROLES.ORG_ADMIN;
 
   return (
     <section className="space-y-3 p-1">
@@ -184,7 +244,16 @@ const DepartmentUsers = () => {
                       {row.joinedAt}
                     </p>
                     <div className="col-span-1 flex justify-end">
-                      {row.canReinvite ? (
+                      {row.type === "active" && canManagePermissions ? (
+                        <button
+                          type="button"
+                          onClick={() => openPermissionEditor(row)}
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/70"
+                        >
+                          <Shield size={13} />
+                          Permissions
+                        </button>
+                      ) : row.canReinvite ? (
                         <button
                           type="button"
                           onClick={() => openInviteModal(row.email)}
@@ -205,6 +274,116 @@ const DepartmentUsers = () => {
       ) : null}
 
       <AnimatePresence>
+        {isPermissionOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closePermissionModal}
+          >
+            <motion.div
+              className="w-full max-w-2xl rounded-xl border bg-white p-4 dark:bg-slate-900"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-semibold">Manage Permissions</h3>
+                  <p className="text-xs muted">
+                    {activePermissionRow?.name} · {activePermissionRow?.roleName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closePermissionModal}
+                  className="rounded-md border p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="mb-3 rounded-lg border bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                  Current permissions
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedPermissions.length > 0 ? (
+                    selectedPermissions.map((permission) => (
+                      <span
+                        key={permission}
+                        className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        <Check size={12} className="text-emerald-600" />
+                        {permission}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm muted">No permissions assigned yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="max-h-[48vh] overflow-y-auto rounded-lg border bg-white p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                <p className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                  Available permissions
+                </p>
+                {permissionOptions.length > 0 ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {permissionOptions.map((permission) => {
+                      const checked = selectedPermissions.includes(permission.value);
+                      return (
+                        <label
+                          key={permission.value}
+                          className="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => togglePermission(permission.value)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                              {permission.label}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {permission.description}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm muted">No manageable permissions available for this role.</p>
+                )}
+              </div>
+
+              {permissionError ? <p className="mt-2 text-sm text-red-600">{permissionError}</p> : null}
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closePermissionModal}
+                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePermissionSave}
+                  disabled={isSavingPermissions}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500 disabled:opacity-60"
+                >
+                  {isSavingPermissions ? "Saving..." : "Save Permissions"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
         {isInviteOpen ? (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
