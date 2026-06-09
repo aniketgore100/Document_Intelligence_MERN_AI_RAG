@@ -2,7 +2,6 @@ import Role from '../models/Role.js';
 
 export class RoleRepository {
   findById(id) {
-    console.log("Finding role by ID:", id);
     return Role.findById(id);
   }
 

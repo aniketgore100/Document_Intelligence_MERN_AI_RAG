@@ -101,6 +101,12 @@ export class OrganizationInviteService {
       throw err;
     }
 
+    if (!Object.values(ROLES).includes(roleName)) {
+      const err = new Error("Invalid invite role");
+      err.statusCode = 400;
+      throw err;
+    }
+
     const organization = await this.organizationRepository.findById(resolvedOrganizationId);
 
 
@@ -248,6 +254,7 @@ export class OrganizationInviteService {
     return {
       invite,
       rawToken,
+      inviteLink,
     };
   }
 

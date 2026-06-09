@@ -47,13 +47,20 @@ export class OrganizationMembershipRepository {
     }).populate("department", "name slug").populate("organization", "name slug");
   }
 
-  findActiveDepartmentMembershipByRole({ userId, roleName }) {
-    return OrganizationMembership.findOne({
-      user: userId,
+  findActiveDepartmentMembershipByRole({ userId, roleName, departmentId }) {
+    const filter = {
       roleName,
       status: "active",
       department: { $ne: null },
-    }).populate("department", "name slug").populate("organization", "name slug");
+    };
+
+    if (userId) filter.user = userId;
+    if (departmentId) filter.department = departmentId;
+
+    return OrganizationMembership.findOne(filter)
+      .populate("user", "name email")
+      .populate("department", "name slug")
+      .populate("organization", "name slug");
   }
 
   listDepartmentMembersByRole({ organizationId, departmentId, roleName, status = "active" }) {

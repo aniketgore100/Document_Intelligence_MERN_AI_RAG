@@ -313,7 +313,7 @@ export class DepartmentService {
     return { success: true };
   }
 
-async getDepartmentById({orgId, deptId}) {
+async getDepartmentById({ orgId, deptId, userId, roleName }) {
 
   const department = await this.departmentRepository.findById(deptId);
   
@@ -325,6 +325,39 @@ async getDepartmentById({orgId, deptId}) {
 
   if (String(department.organization) !== String(toId(orgId))) {
     const err = new Error("Department does not belong to this organization");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (roleName === ROLES.ORG_ADMIN) {
+    const membership = await this.organizationMembershipRepository.findActiveOrgMembershipByRole({
+      userId,
+      roleName: ROLES.ORG_ADMIN,
+    });
+
+    if (!membership || String(toId(membership.organization)) !== String(toId(orgId))) {
+      const err = new Error("Cannot access department outside your organization");
+      err.statusCode = 403;
+      throw err;
+    }
+  } else if (roleName === ROLES.DEPT_ADMIN) {
+    const membership = await this.organizationMembershipRepository.findActiveDepartmentMembershipByRole({
+      userId,
+      roleName: ROLES.DEPT_ADMIN,
+      departmentId: deptId,
+    });
+
+    if (
+      !membership ||
+      String(toId(membership.organization)) !== String(toId(orgId)) ||
+      String(toId(membership.department)) !== String(toId(deptId))
+    ) {
+      const err = new Error("Cannot access department outside your department");
+      err.statusCode = 403;
+      throw err;
+    }
+  } else {
+    const err = new Error("Not allowed to access this department");
     err.statusCode = 403;
     throw err;
   }

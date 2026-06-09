@@ -8,7 +8,6 @@ dotenv.config();
 const seedRoles = async () => {
     try{
         const mongoUri = process.env.MONGODB_URI;
-        console.log("uri :: ", mongoUri);
         
         if(!mongoUri){
             throw new Error("Mongo_URI Missing");

@@ -74,8 +74,10 @@ export const getDepartmentById = async(req, res, next) => {
     const { orgId, deptId } = req.params;
 
     const department = await departmentService.getDepartmentById({
-      orgId : orgId,
-      deptId : deptId,
+      orgId,
+      deptId,
+      userId: req.user?._id || req.user?.id || null,
+      roleName: req.auth?.roleName || null,
     })
 
 
@@ -84,7 +86,6 @@ export const getDepartmentById = async(req, res, next) => {
       department : department
     });
   }catch(error){
-    console.error("Error fetching department details :: ", error);
     next(error);
   }
 }

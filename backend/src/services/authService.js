@@ -17,7 +17,7 @@ export class AuthService {
     this.organizationMembershipRepository = organizationMembershipRepository;
   }
 
-  async register({ name, email, password, role }) {
+  async register({ name, email, password }) {
     const existing = await this.authRepository.findByEmail(email);
     if (existing) {
       const err = new Error("Email already in use");
@@ -25,32 +25,10 @@ export class AuthService {
       throw err;
     }
 
-    let roleId = null;
-
-    if (role) {
-      const roleName = role.trim();
-      let roleDoc = await this.roleRepository.findByName(roleName);
-
-      if (!roleDoc) {
-        if (!Object.values(ROLES).includes(roleName)) {
-          const err = new Error("Invalid role");
-          err.statusCode = 400;
-          throw err;
-        }
-
-        roleDoc = await this.roleRepository.create({
-          name: roleName,
-        });
-      }
-
-      roleId = roleDoc?._id || null;
-    }
-
     const user = await this.authRepository.createUser({
       name,
       email,
       password,
-      role: roleId,
     });
 
     return { user: user.toPublic() };
