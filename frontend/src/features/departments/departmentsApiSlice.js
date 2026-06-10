@@ -24,7 +24,7 @@ export const departmentsApiSlice = apiSlice.injectEndpoints({
         method: "POST",
         body: payload,
       }),
-      invalidatesTags: ["Departments"],
+      invalidatesTags: ["Departments", "Dashboard"],
     }),
 
 

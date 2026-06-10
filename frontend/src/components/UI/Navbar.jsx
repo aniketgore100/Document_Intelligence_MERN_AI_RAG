@@ -76,6 +76,7 @@ const Navbar = ({ user, onMenuToggle }) => {
   const isGlobalAdminHome = location.pathname === "/home" && user?.roleName === ROLES.GLOBAL_ADMIN;
   const isOrgAdminHome = location.pathname === "/home" && user?.roleName === ROLES.ORG_ADMIN;
   const isOrgAdminDepartments = location.pathname === "/departments" && user?.roleName === ROLES.ORG_ADMIN;
+  const isOrgDocumentsPage = location.pathname === "/documents" && user?.roleName === ROLES.ORG_ADMIN;
   const isDeptAdminHome = location.pathname === "/home" && user?.roleName === ROLES.DEPT_ADMIN;
 
   const organizationDisplayName = resolveOrganizationName(user);
@@ -100,8 +101,8 @@ const Navbar = ({ user, onMenuToggle }) => {
         : "Workspace";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-transparent px-2 py-2 md:px-3 dark:border-slate-700/40">
-      <div className="mb-2 md:hidden">
+    <header className="sticky top-0 z-30 border-b border-slate-200/30 bg-transparent px-2 py-1.5 shadow-[0_2px_10px_-8px_rgba(15,23,42,0.28)] md:px-3 dark:border-slate-700/30 dark:shadow-[0_2px_10px_-8px_rgba(15,23,42,0.45)]">
+      <div className="mb-1.5 md:hidden">
         <button
           type="button"
           onClick={onMenuToggle}
@@ -113,7 +114,7 @@ const Navbar = ({ user, onMenuToggle }) => {
       </div>
 
       {isGlobalAdminHome ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">Global Admin Home</h1>
@@ -146,7 +147,7 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : isOrgAdminHome ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{orgAdminOrganizationName}</h1>
@@ -176,7 +177,7 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : isDeptAdminHome ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{organizationDisplayName}</h1>
@@ -205,7 +206,7 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-base font-medium text-slate-800 dark:text-slate-100">{pageName}</h1>
@@ -271,6 +272,15 @@ const Navbar = ({ user, onMenuToggle }) => {
               >
                 <Plus size={13} />
                 Create Department
+              </button>
+            ) : isOrgDocumentsPage ? (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("open-upload-document"))}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
+              >
+                <Plus size={13} />
+                Upload Document
               </button>
             ) : null}
           </div>

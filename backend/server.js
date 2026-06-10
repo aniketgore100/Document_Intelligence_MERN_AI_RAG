@@ -10,6 +10,7 @@ import authRoutes from './src/routes/authRoutes.js';
 import organizationRoutes from './src/routes/organizationRoutes.js';
 import organizationInviteRoutes from './src/routes/organizationInviteRoutes.js';
 import departmentRoutes from './src/routes/departmentRoutes.js';
+import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import membershipRoutes from './src/routes/membershipRoutes.js';
 import documentRoutes from './src/routes/documentRoutes.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
@@ -83,6 +84,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/organization-invites', organizationInviteRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/documents', documentRoutes);
 

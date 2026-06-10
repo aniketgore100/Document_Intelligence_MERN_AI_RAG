@@ -29,6 +29,9 @@ export const completeUpload = async (req, res, next) => {
     const result = await documentService.completeUpload({
       auth: req.auth,
       documentId: req.params.id,
+      originalName: req.body.originalName,
+      sizeBytes: req.body.sizeBytes,
+      contentType: req.body.contentType,
     });
 
     return res.status(200).json(result);
@@ -45,6 +48,7 @@ export const completeUpload = async (req, res, next) => {
 export const listDocuments = async (req, res, next) => {
   try {
     const { page, limit, status } = req.query;
+    
     const result = await documentService.listDocuments({
       auth: req.auth,
       page,

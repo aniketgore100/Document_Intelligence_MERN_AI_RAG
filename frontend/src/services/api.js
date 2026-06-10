@@ -26,6 +26,6 @@ const baseQueryWithAuthGuard = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuthGuard,
-  tagTypes: ['Auth', 'Roles', 'Organizations', 'Departments'],
+  tagTypes: ['Auth', 'Roles', 'Organizations', 'Departments', 'Documents', 'Dashboard'],
   endpoints: () => ({}),
 });

@@ -22,7 +22,11 @@ export class DocumentRepository {
 
   async listByOrganization({ organizationId, status, limit = 20, skip = 0 } = {}) {
     const filter = { organization: organizationId };
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'DELETED' };
+    }
 
     return Document.find(filter)
       .sort({ createdAt: -1 })
@@ -34,7 +38,11 @@ export class DocumentRepository {
 
   async countByOrganization({ organizationId, status } = {}) {
     const filter = { organization: organizationId };
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'DELETED' };
+    }
     return Document.countDocuments(filter);
   }
 

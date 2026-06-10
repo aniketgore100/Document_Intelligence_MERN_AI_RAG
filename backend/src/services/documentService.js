@@ -139,67 +139,66 @@ export class DocumentService {
     });
 
 
-    const document = await this.documentRepository.create({
-      _id: tempDocumentId,
-
-      ...this.buildMetadataRecord({
-        ...file,
-        organizationId: auth.organizationId,
-        uploadedBy: auth.userId,
-      }),
-
-      s3Key,
-    });
-
     const signedUrl = await createUploadUrl({
-      bucket: document.bucket,
-      key: document.s3Key,
-      contentType: document.mimeType,
+      bucket: process.env.AWS_S3_BUCKET,
+      key: s3Key,
+      contentType: file.contentType,
     });
 
     return {
-      document: document.toPublic(),
+      document: {
+        id: tempDocumentId.toString(),
+        organization: auth.organizationId,
+        uploadedBy: auth.userId,
+        originalName: file.originalName,
+        extension: file.extension,
+        mimeType: file.contentType,
+        sizeBytes: file.sizeBytes,
+        bucket: process.env.AWS_S3_BUCKET,
+        s3Key,
+        status: DOCUMENT_UPLOAD.STATUSES.PENDING,
+      },
       upload: {
         url: signedUrl.signedUrl,
         method: "PUT",
         headers: {
-          "Content-Type": document.mimeType,
+          "Content-Type": file.contentType,
+          "x-amz-server-side-encryption": "AES256",
         },
         expiresInSeconds: 900,
       },
     };
   }
 
-  async completeUpload({ auth, documentId }) {
+  async completeUpload({ auth, documentId, originalName, sizeBytes, contentType }) {
     this.requireOrgAdmin(auth);
 
     const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
-    if (!document) {
-      const error = new Error('Document not found');
-      error.statusCode = 404;
-      throw error;
-    }
-
-    if (document.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
+    if (document?.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
       const error = new Error('Document has been deleted');
       error.statusCode = 409;
       throw error;
     }
 
-    if (document.status === DOCUMENT_UPLOAD.STATUSES.ACTIVE) {
-      return {
-        document: document.toPublic(),
-      };
-    }
+    const file = this.validateFileInput({
+      originalName,
+      sizeBytes,
+      contentType,
+    });
+
+    const documentIdString = new mongoose.Types.ObjectId(documentId).toString();
+
+    const s3Key = buildDocumentKey({
+      organizationId: auth.organizationId,
+      documentId: documentIdString,
+      extension: file.extension,
+    });
+
 
     let head;
     try {
-      head = await headObject({ bucket: document.bucket, key: document.s3Key });
+      head = await headObject({ bucket: process.env.AWS_S3_BUCKET, key: s3Key });
     } catch (error) {
-      document.status = DOCUMENT_UPLOAD.STATUSES.FAILED;
-      document.failureReason = 'Uploaded file is missing from S3';
-      await this.documentRepository.save(document);
-
       const notFound =
         error?.name === 'NotFound' ||
         error?.$metadata?.httpStatusCode === 404 ||
@@ -209,13 +208,12 @@ export class DocumentService {
         responseError.statusCode = 409;
         throw responseError;
       }
-
       throw error;
     }
 
     const uploadedSize = Number(head.ContentLength || 0);
     const uploadedContentType = String(head.ContentType || '').trim().toLowerCase();
-    const allowedContentTypes = DOCUMENT_UPLOAD.ALLOWED_MIME_TYPES[document.extension] || [];
+    const allowedContentTypes = DOCUMENT_UPLOAD.ALLOWED_MIME_TYPES[file.extension] || [];
     const validationFailures = [];
 
     if (!Number.isFinite(uploadedSize) || uploadedSize <= 0) {
@@ -231,12 +229,8 @@ export class DocumentService {
     }
 
     if (validationFailures.length > 0) {
-      document.status = DOCUMENT_UPLOAD.STATUSES.FAILED;
-      document.failureReason = validationFailures.join('; ');
-      await this.documentRepository.save(document);
-
       try {
-        await deleteObject({ bucket: document.bucket, key: document.s3Key });
+        await deleteObject({ bucket: process.env.AWS_S3_BUCKET, key: s3Key });
       } catch (deleteError) {
         const notFound =
           deleteError?.name === 'NotFound' ||
@@ -251,16 +245,49 @@ export class DocumentService {
       throw error;
     }
 
-    document.status = DOCUMENT_UPLOAD.STATUSES.ACTIVE;
-    document.uploadedAt = new Date();
-    document.sizeBytes = uploadedSize;
-    document.checksum = head.ETag ? String(head.ETag).replaceAll('"', '') : document.checksum;
-    await this.documentRepository.save(document);
+    if (document) {
+      if (document.status === DOCUMENT_UPLOAD.STATUSES.ACTIVE) {
+        return {
+          document: document.toPublic(),
+        };
+      }
+
+      document.status = DOCUMENT_UPLOAD.STATUSES.ACTIVE;
+      document.uploadedAt = new Date();
+      document.sizeBytes = uploadedSize;
+      document.checksum = head.ETag ? String(head.ETag).replaceAll('"', '') : document.checksum;
+      document.failureReason = null;
+      await this.documentRepository.save(document);
+
+      return {
+        document: document.toPublic(),
+      };
+    }
+
+    const createdDocument = await this.documentRepository.create({
+      _id: new mongoose.Types.ObjectId(documentIdString),
+      organization: auth.organizationId,
+      uploadedBy: auth.userId,
+      originalName: file.originalName,
+      extension: file.extension,
+      mimeType: file.contentType,
+      sizeBytes: uploadedSize,
+      bucket: process.env.AWS_S3_BUCKET,
+      s3Key,
+      status: DOCUMENT_UPLOAD.STATUSES.ACTIVE,
+      version: 1,
+      checksum: head.ETag ? String(head.ETag).replaceAll('"', '') : null,
+      metadata: {
+        source: 'direct-upload',
+      },
+      uploadedAt: new Date(),
+    });
 
     return {
-      document: document.toPublic(),
+      document: createdDocument.toPublic(),
     };
   }
+  
 
   async listDocuments({ auth, page = 1, limit = 20, status }) {
     this.requireOrgAdmin(auth);

@@ -29,10 +29,9 @@ const App = () => {
 
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ORG_ADMIN]} />}>
             <Route path="/departments" element={<OrgAdminHomeView />} />
+            <Route path="/documents" element={<OrgAdminDocuments />} />
             <Route path="/department/:orgId/:deptId" element={<Department />} />  
           </Route>
-
-          <Route path="/documents" element={<OrgAdminDocuments />} />
           <Route path="/settings" element={<OrgAdminSettings />} />
 
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.DEPT_ADMIN]} />}>

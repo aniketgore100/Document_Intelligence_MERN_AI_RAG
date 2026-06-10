@@ -33,6 +33,16 @@ router.post('/upload-url', protect, authorize(ACTIONS.DOCUMENT.CREATE),
 router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   validate([
     param('id').isMongoId().withMessage('Document id must be valid'),
+    body('originalName')
+      .isString()
+      .withMessage('originalName must be a string')
+      .trim()
+      .isLength({ min: 1, max: 255 })
+      .withMessage('originalName must be 1-255 characters'),
+    body('contentType').trim().notEmpty().withMessage('contentType is required'),
+    body('sizeBytes')
+      .isInt({ min: 1, max: 20 * 1024 * 1024 })
+      .withMessage('sizeBytes must be between 1 and 20 MB'),
   ]),
   completeUpload,
 );

@@ -24,7 +24,6 @@ const globalAdminMenuItems = [
 
 const deptAdminMenuItems = [
   { name: "Home", icon: Home, path: "/home" },
-  { name: "Documents", icon: FileText, path: "/documents" },
   { name: "Manage Users", icon: Users, path: "/department/users" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
