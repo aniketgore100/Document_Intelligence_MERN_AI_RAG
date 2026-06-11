@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, Pencil, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, MoreVertical, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +10,14 @@ import {
 import { useCreateDepartmentAdminInviteMutation } from "../../features/invites/invitesApiSlice";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PAGE_SIZE = 10;
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${date.getDate()} ${new Intl.DateTimeFormat("en-US", { month: "long" }).format(date)} ${date.getFullYear()}`;
+};
 
 const formatTimeRemaining = (expiresAt, nowTs) => {
   if (!expiresAt) return null;
@@ -26,7 +34,8 @@ const formatTimeRemaining = (expiresAt, nowTs) => {
 };
 
 const OrgAdminHomeView = () => {
-  const departmentsQuery = useGetDepartmentsQuery({ page: 1, limit: 50 });
+  const [page, setPage] = useState(1);
+  const departmentsQuery = useGetDepartmentsQuery({ page, limit: PAGE_SIZE });
   const [createDepartment, { isLoading: isCreatingDept }] = useCreateDepartmentMutation();
   const [createDepartmentAdminInvite, { isLoading: isReinviting }] =
     useCreateDepartmentAdminInviteMutation();
@@ -40,6 +49,7 @@ const OrgAdminHomeView = () => {
   const [reinviteDepartmentName, setReinviteDepartmentName] = useState("");
   const [reinviteEmail, setReinviteEmail] = useState("");
   const [nowTs, setNowTs] = useState(Date.now());
+  const [openActionId, setOpenActionId] = useState("");
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const orgId = user?.organizationId;
@@ -53,6 +63,17 @@ const OrgAdminHomeView = () => {
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!event.target.closest?.('[data-department-actions-root="true"]')) {
+        setOpenActionId("");
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
   const rows = useMemo(() => {
@@ -70,10 +91,12 @@ const OrgAdminHomeView = () => {
         pendingTime,
         inviteExpired: dept.inviteStatus === "expired" || (dept.inviteStatus === "pending" && !pendingTime),
         status: dept.status,
-        createdAt: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString() : "-",
+        createdAt: formatDate(dept.createdAt),
       };
     });
   }, [departmentsQuery.data, nowTs]);
+
+  const pagination = departmentsQuery.data?.pagination;
 
   const closeDeptModal = () => {
     setIsCreateDeptOpen(false);
@@ -145,13 +168,34 @@ const OrgAdminHomeView = () => {
     });
   };
 
+  const toggleActionMenu = (event, rowId) => {
+    event.stopPropagation();
+    setOpenActionId((current) => (current === rowId ? "" : rowId));
+  };
+
+  const renderStatusBadge = (status) => {
+    if (status === "active") {
+      return (
+        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium capitalize text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          {status}
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        {status}
+      </span>
+    );
+  };
+
   const isLoading = departmentsQuery.isLoading;
   const isError = departmentsQuery.isError;
   const errorMessage = departmentsQuery.error?.data?.message;
   const hasRows = rows.length > 0;
 
   return (
-    <section className="space-y-3 p-1">
+    <section className="flex min-h-[calc(100vh-158px)] flex-col space-y-3 p-1">
       {isLoading ? <div className="rounded-xl border bg-transparent p-3 text-sm">Loading...</div> : null}
       {isError ? (
         <div className="rounded-xl border bg-transparent p-3 text-sm text-red-600">
@@ -175,8 +219,8 @@ const OrgAdminHomeView = () => {
       ) : null}
 
       {!isLoading && !isError && hasRows ? (
-        <div className="overflow-x-auto rounded-xl border bg-transparent">
-          <div className="min-w-[780px]">
+        <div className="flex min-h-[calc(100vh-178px)] flex-1 flex-col overflow-x-auto rounded-xl border bg-transparent">
+          <div className="min-w-[780px] shrink-0">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur dark:bg-slate-900/60">
                 <tr className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-300">
@@ -186,10 +230,10 @@ const OrgAdminHomeView = () => {
                   <th className="border border-slate-200 px-4 py-2 text-left dark:border-slate-700">
                     Admin
                   </th>
-                  <th className="border border-slate-200 px-4 py-2 text-left dark:border-slate-700">
+                  <th className="border border-slate-200 px-4 py-2 text-center dark:border-slate-700">
                     Status
                   </th>
-                  <th className="border border-slate-200 px-4 py-2 text-left dark:border-slate-700">
+                  <th className="border border-slate-200 px-4 py-2 text-center dark:border-slate-700">
                     Created Date
                   </th>
                   <th className="border border-slate-200 px-4 py-2 text-center dark:border-slate-700">
@@ -249,29 +293,56 @@ const OrgAdminHomeView = () => {
                         "-"
                       )}
                     </td>
-                    <td className="border border-slate-200 px-4 py-2 align-middle dark:border-slate-700">
-                      <span className="rounded-md border border-slate-200 px-2 py-0.5 text-xs capitalize dark:border-slate-700">
-                        {row.status}
-                      </span>
+                    <td className="border border-slate-200 px-4 py-2 text-center align-middle dark:border-slate-700">
+                      {renderStatusBadge(row.status)}
                     </td>
-                    <td className="border border-slate-200 px-4 py-2 align-middle text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                    <td className="border border-slate-200 px-4 py-2 text-center align-middle text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {row.createdAt}
                     </td>
                     <td className="border border-slate-200 px-4 py-2 align-middle dark:border-slate-700">
-                      <div className="flex justify-center">
+                      <div data-department-actions-root="true" className="relative flex justify-center">
                         <button
                           type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (row.adminName || row.adminEmail) {
-                              openDepartment(row, row.id);
-                            }
-                          }}
-                          disabled={!row.adminName && !row.adminEmail}
-                          className="rounded-md border border-slate-200 p-1.5 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                          onClick={(event) => toggleActionMenu(event, row.id)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          aria-label="Department actions"
+                          title="Actions"
                         >
-                          <Pencil size={13} />
+                          <MoreVertical size={14} />
                         </button>
+                        {openActionId === row.id ? (
+                          <div className="absolute right-1 top-8 z-20 w-36 rounded-lg border bg-white p-1 text-left shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpenActionId("");
+                                openDepartment(row, row.id);
+                              }}
+                              disabled={!row.adminName && !row.adminEmail}
+                              className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                              Open
+                            </button>
+                            {row.inviteExpired ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenActionId("");
+                                  openReinvite({
+                                    id: row.id,
+                                    name: row.name,
+                                    email: row.inviteEmail || row.adminEmail,
+                                  });
+                                }}
+                                className="w-full rounded-md px-3 py-2 text-left text-sm text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                              >
+                                Invite Again
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -279,6 +350,33 @@ const OrgAdminHomeView = () => {
               </tbody>
             </table>
           </div>
+          {pagination ? (
+            <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
+              <p className="text-slate-500 dark:text-slate-400">
+                Page {pagination.page} of {pagination.totalPages} - {pagination.total} departments
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={!pagination.hasPrevPage}
+                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ChevronLeft size={14} />
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => current + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

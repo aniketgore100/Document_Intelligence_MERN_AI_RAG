@@ -1,9 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
+  Check,
   FileText,
   Loader2,
   MoreVertical,
+  Plus,
   Trash2,
   UploadCloud,
   X,
@@ -11,10 +13,13 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
+  useAssignDocumentDepartmentsMutation,
+  useAssignDocumentUsersMutation,
   useCompleteDocumentUploadMutation,
   useCreateDocumentUploadUrlMutation,
   useDeleteDocumentMutation,
   useGetDocumentsQuery,
+  useLazyGetDocumentAssignmentTargetsQuery,
 } from '../features/documents/documentsApiSlice';
 import { ROLES } from '../constants/roles';
 
@@ -89,6 +94,20 @@ const formatUploadTime = (value) => {
   return `${day} ${month} ${year} : ${time}`;
 };
 
+const getInitials = (value) => {
+  const words = String(value || 'NA').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'NA';
+};
+
+const badgeColors = [
+  'bg-pink-600',
+  'bg-red-500',
+  'bg-rose-500',
+  'bg-blue-500',
+  'bg-green-600',
+  'bg-amber-500',
+];
+
 
 
 const OrgAdminDocuments = () => {
@@ -103,13 +122,25 @@ const OrgAdminDocuments = () => {
   const [uploadError, setUploadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [assignmentModal, setAssignmentModal] = useState(null);
+  const [assignmentTargets, setAssignmentTargets] = useState(null);
+  const [selectedTargetIds, setSelectedTargetIds] = useState([]);
+  const [assignmentError, setAssignmentError] = useState('');
   const canManageDocs = user?.roleName === ROLES.ORG_ADMIN;
+  const canAssignDocs = canManageDocs || user?.roleName === ROLES.DEPT_ADMIN;
+  const canViewDocs = canManageDocs || user?.roleName === ROLES.DEPT_ADMIN || user?.roleName === ROLES.USER;
   const [createUploadUrl] = useCreateDocumentUploadUrlMutation();
   const [completeUpload] = useCompleteDocumentUploadMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
+  const [loadAssignmentTargets, { isFetching: isLoadingAssignmentTargets }] =
+    useLazyGetDocumentAssignmentTargetsQuery();
+  const [assignDocumentDepartments, { isLoading: isAssigningDepartments }] =
+    useAssignDocumentDepartmentsMutation();
+  const [assignDocumentUsers, { isLoading: isAssigningUsers }] =
+    useAssignDocumentUsersMutation();
   const { data, isLoading, refetch } = useGetDocumentsQuery(
     { page, limit: 10 },
-    { skip: !canManageDocs },
+    { skip: !canViewDocs },
   );
 
   const documents = data?.documents || [];
@@ -163,6 +194,212 @@ const OrgAdminDocuments = () => {
 
   const toggleActionsMenu = (id) => {
     setOpenActionsId((currentId) => (currentId === id ? null : id));
+  };
+
+  const openAssignmentModal = async (document) => {
+    setAssignmentModal(document);
+    setAssignmentTargets(null);
+    setSelectedTargetIds([]);
+    setAssignmentError('');
+
+    try {
+      const targets = await loadAssignmentTargets({ id: document.id }).unwrap();
+      setAssignmentTargets(targets);
+      setSelectedTargetIds(
+        targets.mode === 'departments'
+          ? targets.assignedDepartmentIds || []
+          : targets.assignedUserIds || [],
+      );
+    } catch (error) {
+      setAssignmentError(error?.data?.message || 'Failed to load assignment targets.');
+    }
+  };
+
+  const closeAssignmentModal = () => {
+    setAssignmentModal(null);
+    setAssignmentTargets(null);
+    setSelectedTargetIds([]);
+    setAssignmentError('');
+  };
+
+  const toggleTargetSelection = (id) => {
+    setSelectedTargetIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  };
+
+  const handleAssignmentSave = async () => {
+    if (!assignmentModal || !assignmentTargets) return;
+
+    try {
+      setAssignmentError('');
+      if (assignmentTargets.mode === 'departments') {
+        await assignDocumentDepartments({
+          id: assignmentModal.id,
+          departmentIds: selectedTargetIds,
+        }).unwrap();
+      } else {
+        await assignDocumentUsers({
+          id: assignmentModal.id,
+          userIds: selectedTargetIds,
+        }).unwrap();
+      }
+      closeAssignmentModal();
+      await refetch();
+    } catch (error) {
+      setAssignmentError(error?.data?.message || 'Failed to save assignments.');
+    }
+  };
+
+  const renderAssignedBadges = (document) => {
+    const assignedDepartments = document.assignedDepartments || [];
+
+    if (!assignedDepartments.length) {
+      return <span className="text-xs muted">Unassigned</span>;
+    }
+
+    return (
+      <div className="flex -space-x-2">
+        {assignedDepartments.slice(0, 5).map((department, index) => (
+          <span
+            key={department.id || department.name}
+            title={department.name}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-[10px] font-semibold text-white dark:border-slate-900 ${badgeColors[index % badgeColors.length]}`}
+          >
+            {getInitials(department.name)}
+          </span>
+        ))}
+        {assignedDepartments.length > 5 ? (
+          <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-slate-700 px-1 text-[10px] font-semibold text-white dark:border-slate-900">
+            +{assignedDepartments.length - 5}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderAssignmentPopover = () => {
+    if (!assignmentModal) return null;
+
+    return (
+      <motion.div
+        className="absolute right-0 top-9 z-30 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-white p-3 text-left shadow-xl dark:border-slate-800 dark:bg-slate-900"
+        initial={{ opacity: 0, y: -4, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -4, scale: 0.98 }}
+      >
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Assign Document
+            </p>
+            <p className="truncate text-xs muted">{assignmentModal.originalName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={closeAssignmentModal}
+            className="rounded-md border p-1 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            <X size={13} />
+          </button>
+        </div>
+
+        <div className="max-h-72 overflow-y-auto rounded-lg border dark:border-slate-800">
+          {isLoadingAssignmentTargets ? (
+            <div className="flex items-center gap-2 px-3 py-4 text-sm muted">
+              <Loader2 size={14} className="animate-spin" />
+              Loading targets...
+            </div>
+          ) : assignmentTargets?.mode === 'departments' ? (
+            assignmentTargets.departments?.length ? (
+              assignmentTargets.departments.map((department) => (
+                <label
+                  key={department.id}
+                  className="flex cursor-pointer items-center gap-3 border-b px-3 py-2.5 last:border-b-0 dark:border-slate-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTargetIds.includes(String(department.id))}
+                    onChange={() => toggleTargetSelection(String(department.id))}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {department.name}
+                    </p>
+                    <p className="truncate text-xs muted">
+                      {department.admins?.length
+                        ? department.admins.map((admin) => admin.name || admin.email).join(', ')
+                        : 'No active department admin'}
+                    </p>
+                  </div>
+                  {selectedTargetIds.includes(String(department.id)) ? (
+                    <Check size={15} className="text-blue-600" />
+                  ) : null}
+                </label>
+              ))
+            ) : (
+              <p className="px-3 py-4 text-sm muted">No departments found for this organization.</p>
+            )
+          ) : assignmentTargets?.mode === 'users' ? (
+            assignmentTargets.users?.length ? (
+              assignmentTargets.users.map((targetUser) => (
+                <label
+                  key={targetUser.id}
+                  className="flex cursor-pointer items-center gap-3 border-b px-3 py-2.5 last:border-b-0 dark:border-slate-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTargetIds.includes(String(targetUser.id))}
+                    onChange={() => toggleTargetSelection(String(targetUser.id))}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {targetUser.name}
+                    </p>
+                    <p className="truncate text-xs muted">{targetUser.email}</p>
+                  </div>
+                  {selectedTargetIds.includes(String(targetUser.id)) ? (
+                    <Check size={15} className="text-blue-600" />
+                  ) : null}
+                </label>
+              ))
+            ) : (
+              <p className="px-3 py-4 text-sm muted">No users found in this department.</p>
+            )
+          ) : assignmentError ? (
+            <p className="px-3 py-4 text-sm text-rose-600 dark:text-rose-300">{assignmentError}</p>
+          ) : null}
+        </div>
+
+        {assignmentError ? (
+          <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{assignmentError}</p>
+        ) : null}
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs muted">{selectedTargetIds.length} selected</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={closeAssignmentModal}
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAssignmentSave}
+              disabled={!assignmentTargets || isAssigningDepartments || isAssigningUsers}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {(isAssigningDepartments || isAssigningUsers) ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              Save
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
 
@@ -265,14 +502,14 @@ const OrgAdminDocuments = () => {
 
 
 
-  if (!canManageDocs) {
+  if (!canViewDocs) {
     return (
       <section className="flex min-h-[58vh] items-center justify-center p-4">
         <div className="max-w-lg rounded-3xl border border-rose-200 bg-rose-50/80 p-6 text-center text-rose-900 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-100">
           <AlertCircle className="mx-auto mb-3" size={28} />
           <h1 className="text-lg font-semibold">Document access is restricted</h1>
           <p className="mt-2 text-sm leading-6">
-            Only organization admins can upload, list, and delete documents right now.
+            Your account does not have permission to view documents right now.
           </p>
         </div>
       </section>
@@ -314,16 +551,23 @@ const OrgAdminDocuments = () => {
                 <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                   Upload Time
                 </th>
-                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
-                  Actions
-                </th>
+                {canAssignDocs ? (
+                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                    Assign
+                  </th>
+                ) : null}
+                {canManageDocs ? (
+                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                    Actions
+                  </th>
+                ) : null}
               </tr>
             </thead>
 
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-4 text-sm muted">
+                  <td colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)} className="px-4 py-4 text-sm muted">
                     Loading...
                   </td>
                 </tr>
@@ -353,43 +597,67 @@ const OrgAdminDocuments = () => {
                       {document.uploadedLabel}
                     </td>
 
-                    <td className="border border-slate-200 px-4 py-2 dark:border-slate-700">
-                      <div
-                        data-doc-actions-root="true"
-                        className="relative flex justify-end"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleActionsMenu(document.id)}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-600 transition hover:bg-white dark:text-slate-200 dark:hover:bg-slate-800"
-                        >
-                          <MoreVertical size={13} />
-                        </button>
-
-                        {openActionsId === document.id && (
-                          <div className="absolute right-0 top-9 z-20 w-36 rounded-xl border bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenActionsId(null);
-                                handleDelete(document.id);
-                              }}
-                              disabled={document.status === 'DELETED'}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                            >
-                              <Trash2 size={13} />
-                              Delete
-                            </button>
+                    {canAssignDocs ? (
+                      <td className="border border-slate-200 px-4 py-2 text-right dark:border-slate-700">
+                        <div className="relative inline-flex items-center justify-end gap-3">
+                          <div className="flex">
+                            {renderAssignedBadges(document)}
                           </div>
-                        )}
-                      </div>
-                    </td>
+                          <button
+                            type="button"
+                            onClick={() => openAssignmentModal(document)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border text-blue-700 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                            aria-label="Assign document"
+                            title="Assign"
+                          >
+                            <Plus size={14} />
+                          </button>
+                          <AnimatePresence>
+                            {assignmentModal?.id === document.id ? renderAssignmentPopover() : null}
+                          </AnimatePresence>
+                        </div>
+                      </td>
+                    ) : null}
+
+                    {canManageDocs ? (
+                      <td className="border border-slate-200 px-4 py-2 dark:border-slate-700">
+                        <div
+                          data-doc-actions-root="true"
+                          className="relative flex justify-end"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleActionsMenu(document.id)}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-600 transition hover:bg-white dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            <MoreVertical size={13} />
+                          </button>
+
+                          {openActionsId === document.id && (
+                            <div className="absolute right-0 top-9 z-20 w-36 rounded-xl border bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionsId(null);
+                                  handleDelete(document.id);
+                                }}
+                                disabled={document.status === 'DELETED'}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                              >
+                                <Trash2 size={13} />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)}
                     className="px-4 py-6 text-center text-sm muted"
                   >
                     No documents uploaded yet.

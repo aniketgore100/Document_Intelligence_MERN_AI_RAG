@@ -74,6 +74,29 @@ export class OrganizationMembershipRepository {
       .sort({ createdAt: -1 });
   }
 
+  listDepartmentMembersByRoles({ organizationId, departmentId, roleNames, status = "active" }) {
+    return OrganizationMembership.find({
+      organization: organizationId,
+      department: departmentId,
+      roleName: { $in: roleNames },
+      status,
+    })
+      .populate("user", "name email")
+      .populate("department", "name slug")
+      .sort({ createdAt: -1 });
+  }
+
+  listActiveMembersByDepartmentsAndRole({ organizationId, departmentIds, roleName }) {
+    return OrganizationMembership.find({
+      organization: organizationId,
+      department: { $in: departmentIds },
+      roleName,
+      status: "active",
+    })
+      .populate("user", "name email")
+      .populate("department", "name slug");
+  }
+
   findById(id) {
     return OrganizationMembership.findById(id)
       .populate("user", "name email")

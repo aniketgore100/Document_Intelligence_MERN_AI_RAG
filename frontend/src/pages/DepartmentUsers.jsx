@@ -36,18 +36,22 @@ const DepartmentUsers = () => {
   const [activePermissionRow, setActivePermissionRow] = useState(null);
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [nowTs, setNowTs] = useState(Date.now());
-  const currentRoleName = useSelector((state) => state.auth.user?.roleName);
+  const user = useSelector((state) => state.auth.user);
+  const currentRoleName = user?.roleName;
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const { data: departmentsData, isLoading: isLoadingDepartment } = useGetDepartmentsQuery({ page: 1, limit: 1 });
+  const { data: departmentsData, isLoading: isLoadingDepartment } = useGetDepartmentsQuery(
+    { page: 1, limit: 1 },
+    { skip: currentRoleName === ROLES.DEPT_ADMIN }
+  );
 
   const department = departmentsData?.departments?.[0] || null;
-  const departmentId = department?.id || null;
-  const organizationId = department?.organization || null;
+  const departmentId = user?.departmentId || department?.id || null;
+  const organizationId = user?.organizationId || department?.organization || null;
 
   const {
     data: usersData,

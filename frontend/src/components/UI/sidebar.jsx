@@ -5,10 +5,18 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  BookOpen,
+  User,
   Users,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROLES } from "../../constants/roles";
+
+const userMenuItems = [
+  { name: "Knowledge Base", icon: BookOpen, path: "/home" },
+  { name: "Profile", icon: User, path: "/profile" },
+  { name: "Settings", icon: Settings, path: "/settings" },
+];
 
 const orgAdminMenuItems = [
   { name: "Home", icon: Home, path: "/home" },
@@ -25,6 +33,7 @@ const globalAdminMenuItems = [
 const deptAdminMenuItems = [
   { name: "Home", icon: Home, path: "/home" },
   { name: "Manage Users", icon: Users, path: "/department/users" },
+  { name: "Documents", icon: FileText, path: "/documents" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
 
@@ -32,7 +41,9 @@ const Sidebar = ({ isCollapsed, onToggle, roleName, isMobileOpen, onCloseMobile 
   const navigate = useNavigate();
   const location = useLocation();
   const menuItems =
-    roleName === ROLES.GLOBAL_ADMIN
+    roleName === ROLES.USER
+      ? userMenuItems
+      : roleName === ROLES.GLOBAL_ADMIN
       ? globalAdminMenuItems
       : roleName === ROLES.DEPT_ADMIN
         ? deptAdminMenuItems

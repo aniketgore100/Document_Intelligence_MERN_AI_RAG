@@ -30,6 +30,7 @@ const toPathBreadcrumbs = (pathname) => {
 const getHomeHeading = (roleName) => {
   if (roleName === ROLES.ORG_ADMIN) return "Organization Admin Dashboard";
   if (roleName === ROLES.DEPT_ADMIN) return "Department Admin Dashboard";
+  if (roleName === ROLES.USER) return "Knowledge Base";
   return "User Dashboard";
 };
 
@@ -61,9 +62,18 @@ const Navbar = ({ user, onMenuToggle }) => {
 
   const location = useLocation();
   const departmentRouteIds = getDepartmentRouteIds(location.pathname);
-  const shouldFetchDepartmentName = Boolean(departmentRouteIds?.orgId && departmentRouteIds?.deptId);
+  const shouldFetchDepartmentName = Boolean(
+    (departmentRouteIds?.orgId && departmentRouteIds?.deptId) ||
+      (user?.roleName === ROLES.DEPT_ADMIN && user?.organizationId && user?.departmentId),
+  );
+  const departmentQueryIds =
+    departmentRouteIds || (
+      user?.roleName === ROLES.DEPT_ADMIN && user?.organizationId && user?.departmentId
+        ? { orgId: user.organizationId, deptId: user.departmentId }
+        : null
+    );
   const { data: departmentData } = useGetDepartmentByIdQuery(
-    departmentRouteIds || { orgId: "", deptId: "" },
+    departmentQueryIds || { orgId: "", deptId: "" },
     { skip: !shouldFetchDepartmentName }
   );
 
@@ -80,7 +90,8 @@ const Navbar = ({ user, onMenuToggle }) => {
   const isDeptAdminHome = location.pathname === "/home" && user?.roleName === ROLES.DEPT_ADMIN;
 
   const organizationDisplayName = resolveOrganizationName(user);
-  const departmentDisplayName = departmentData?.department?.name || "Department";
+  const departmentDisplayName =
+    departmentData?.department?.name || user?.departmentName || "Department";
 
   const orgAdminOrganizationName =
     user?.organizationName ||

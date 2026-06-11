@@ -1,4 +1,8 @@
+import mongoose from "mongoose";
 import Department from "../models/Department.js";
+
+const toObjectId = (value) =>
+  mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(value) : value;
 
 export class DepartmentRepository {
   create(payload, options = {}) {
@@ -30,7 +34,7 @@ export class DepartmentRepository {
   }
 
   listByOrganization({ organizationId, status, limit = 20, skip = 0 }) {
-    const filter = { organization: organizationId };
+    const filter = { organization: toObjectId(organizationId) };
     if (status) filter.status = status;
     return Department.aggregate([
       { $match: filter },

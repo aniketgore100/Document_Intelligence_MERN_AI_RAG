@@ -36,8 +36,40 @@ export class DocumentRepository {
       .populate('uploadedBy', 'name email role');
   }
 
+  async listByIdsForOrganization({ organizationId, documentIds, status, limit = 20, skip = 0 } = {}) {
+    const filter = {
+      _id: { $in: documentIds },
+      organization: organizationId,
+    };
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'DELETED' };
+    }
+
+    return Document.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('department', 'name slug')
+      .populate('uploadedBy', 'name email role');
+  }
+
   async countByOrganization({ organizationId, status } = {}) {
     const filter = { organization: organizationId };
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: 'DELETED' };
+    }
+    return Document.countDocuments(filter);
+  }
+
+  async countByIdsForOrganization({ organizationId, documentIds, status } = {}) {
+    const filter = {
+      _id: { $in: documentIds },
+      organization: organizationId,
+    };
     if (status) {
       filter.status = status;
     } else {

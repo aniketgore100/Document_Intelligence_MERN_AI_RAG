@@ -251,6 +251,8 @@ export class OrganizationInviteService {
     //   }
     // );
 
+    console.log("Invite link :: ", inviteLink);
+
     return {
       invite,
       rawToken,

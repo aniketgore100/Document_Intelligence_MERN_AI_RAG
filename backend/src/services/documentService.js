@@ -1,5 +1,8 @@
 import path from 'path';
 import { DocumentRepository } from '../repositories/documentRepository.js';
+import { DocumentAssignmentRepository } from '../repositories/documentAssignmentRepository.js';
+import { DepartmentRepository } from '../repositories/departmentRepository.js';
+import { OrganizationMembershipRepository } from '../repositories/organizationMembershipRepository.js';
 import { DOCUMENT_UPLOAD } from '../constants/documents.js';
 import { createUploadUrl, buildDocumentKey, headObject, deleteObject } from '../utils/s3.js';
 import { ROLES } from '../constants/roles.js';
@@ -15,8 +18,14 @@ export class DocumentService {
 
   constructor({
     documentRepository = new DocumentRepository(),
+    documentAssignmentRepository = new DocumentAssignmentRepository(),
+    departmentRepository = new DepartmentRepository(),
+    organizationMembershipRepository = new OrganizationMembershipRepository(),
   } = {}) {
     this.documentRepository = documentRepository;
+    this.documentAssignmentRepository = documentAssignmentRepository;
+    this.departmentRepository = departmentRepository;
+    this.organizationMembershipRepository = organizationMembershipRepository;
   }
 
 
@@ -33,6 +42,98 @@ export class DocumentService {
       error.statusCode = 400;
       throw error;
     }
+  }
+
+  requireOrganizationContext(auth) {
+    if (!auth?.organizationId) {
+      const error = new Error('Organization context is required');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  requireDepartmentContext(auth) {
+    this.requireOrganizationContext(auth);
+    if (!auth?.departmentId) {
+      const error = new Error('Department context is required');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  normalizeObjectIds(values, fieldName) {
+    if (!Array.isArray(values)) {
+      const error = new Error(`${fieldName} must be an array`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const uniqueIds = [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
+    for (const id of uniqueIds) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        const error = new Error(`Invalid id in ${fieldName}`);
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+    return uniqueIds;
+  }
+
+  serializeAssignment(assignment) {
+    const department = assignment.department;
+    const user = assignment.user;
+    return {
+      id: assignment._id,
+      targetType: assignment.targetType,
+      status: assignment.status,
+      assignedAt: assignment.assignedAt,
+      department: department
+        ? {
+            id: department._id || department,
+            name: department.name || null,
+            slug: department.slug || null,
+          }
+        : null,
+      user: user
+        ? {
+            id: user._id || user,
+            name: user.name || null,
+            email: user.email || null,
+          }
+        : null,
+    };
+  }
+
+  async attachAssignmentSummaries(documents) {
+    const documentIds = documents.map((document) => document._id);
+    if (!documentIds.length) return [];
+
+    const assignments = await this.documentAssignmentRepository.listActiveByDocuments({
+      documentIds,
+    });
+
+    const grouped = new Map();
+    for (const assignment of assignments) {
+      const documentId = String(assignment.document);
+      if (!grouped.has(documentId)) grouped.set(documentId, []);
+      grouped.get(documentId).push(this.serializeAssignment(assignment));
+    }
+
+    return documents.map((document) => {
+      const publicDocument = document.toPublic();
+      const documentAssignments = grouped.get(String(document._id)) || [];
+      return {
+        ...publicDocument,
+        assignedDepartments: documentAssignments
+          .filter((assignment) => assignment.targetType === 'DEPARTMENT')
+          .map((assignment) => assignment.department)
+          .filter(Boolean),
+        assignedUsers: documentAssignments
+          .filter((assignment) => assignment.targetType === 'USER')
+          .map((assignment) => assignment.user)
+          .filter(Boolean),
+      };
+    });
   }
 
   validateFileInput({ originalName, sizeBytes, contentType }) {
@@ -290,7 +391,7 @@ export class DocumentService {
   
 
   async listDocuments({ auth, page = 1, limit = 20, status }) {
-    this.requireOrgAdmin(auth);
+    this.requireOrganizationContext(auth);
 
     const parsedPage = Number(page);
     const parsedLimit = Number(limit);
@@ -306,21 +407,70 @@ export class DocumentService {
     }
 
     const skip = (safePage - 1) * safeLimit;
-    const [documents, total] = await Promise.all([
-      this.documentRepository.listByOrganization({
+
+    let documents = [];
+    let total = 0;
+
+    if (auth.roleName === ROLES.ORG_ADMIN) {
+      [documents, total] = await Promise.all([
+        this.documentRepository.listByOrganization({
+          organizationId: auth.organizationId,
+          status: safeStatus,
+          limit: safeLimit,
+          skip,
+        }),
+        this.documentRepository.countByOrganization({
+          organizationId: auth.organizationId,
+          status: safeStatus,
+        }),
+      ]);
+    } else if (auth.roleName === ROLES.DEPT_ADMIN) {
+      this.requireDepartmentContext(auth);
+      const documentIds = await this.documentAssignmentRepository.listActiveDocumentIdsByDepartment({
         organizationId: auth.organizationId,
-        status: safeStatus,
-        limit: safeLimit,
-        skip,
-      }),
-      this.documentRepository.countByOrganization({
+        departmentId: auth.departmentId,
+      });
+      [documents, total] = await Promise.all([
+        this.documentRepository.listByIdsForOrganization({
+          organizationId: auth.organizationId,
+          documentIds,
+          status: safeStatus,
+          limit: safeLimit,
+          skip,
+        }),
+        this.documentRepository.countByIdsForOrganization({
+          organizationId: auth.organizationId,
+          documentIds,
+          status: safeStatus,
+        }),
+      ]);
+    } else if (auth.roleName === ROLES.USER) {
+      const documentIds = await this.documentAssignmentRepository.listActiveDocumentIdsByUser({
         organizationId: auth.organizationId,
-        status: safeStatus,
-      }),
-    ]);
+        userId: auth.userId,
+      });
+      [documents, total] = await Promise.all([
+        this.documentRepository.listByIdsForOrganization({
+          organizationId: auth.organizationId,
+          documentIds,
+          status: safeStatus,
+          limit: safeLimit,
+          skip,
+        }),
+        this.documentRepository.countByIdsForOrganization({
+          organizationId: auth.organizationId,
+          documentIds,
+          status: safeStatus,
+        }),
+      ]);
+    } else {
+      const error = new Error('Not allowed to view documents');
+      error.statusCode = 403;
+      throw error;
+    }
 
     return {
-      documents: documents.map((document) => document.toPublic()),
+      documents: await this.attachAssignmentSummaries(documents),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -332,6 +482,192 @@ export class DocumentService {
     };
   }
 
+  async getAssignmentTargets({ auth, documentId }) {
+    if (auth.roleName === ROLES.ORG_ADMIN) {
+      this.requireOrgAdmin(auth);
+
+      const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
+      if (!document || document.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
+        const error = new Error('Document not found');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const [departmentsResult, activeAssignments] = await Promise.all([
+        this.departmentRepository.listByOrganization({
+          organizationId: auth.organizationId,
+          status: 'active',
+          limit: 100,
+          skip: 0,
+        }),
+        this.documentAssignmentRepository.listActiveByDocument({
+          documentId,
+          targetType: 'DEPARTMENT',
+        }),
+      ]);
+
+      const departmentIds = departmentsResult.map((department) => department._id);
+      const adminMemberships = await this.organizationMembershipRepository.listActiveMembersByDepartmentsAndRole({
+        organizationId: auth.organizationId,
+        departmentIds,
+        roleName: ROLES.DEPT_ADMIN,
+      });
+      const adminsByDepartment = new Map();
+      for (const membership of adminMemberships) {
+        const departmentKey = String(membership.department?._id || membership.department);
+        if (!adminsByDepartment.has(departmentKey)) adminsByDepartment.set(departmentKey, []);
+        if (membership.user) {
+          adminsByDepartment.get(departmentKey).push({
+            id: membership.user._id,
+            name: membership.user.name,
+            email: membership.user.email,
+          });
+        }
+      }
+
+      const departments = departmentsResult.map((department) => ({
+        id: department._id,
+        name: department.name,
+        slug: department.slug,
+        admins: adminsByDepartment.get(String(department._id)) || [],
+      }));
+
+      return {
+        mode: 'departments',
+        document: document.toPublic(),
+        assignedDepartmentIds: activeAssignments.map((assignment) => String(assignment.department?._id || assignment.department)),
+        departments,
+      };
+    }
+
+    if (auth.roleName === ROLES.DEPT_ADMIN) {
+      this.requireDepartmentContext(auth);
+
+      const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
+      if (!document || document.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
+        const error = new Error('Document not found');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const departmentAssignments = await this.documentAssignmentRepository.listActiveByDocument({
+        documentId,
+        targetType: 'DEPARTMENT',
+      });
+      const hasDepartmentAccess = departmentAssignments.some(
+        (assignment) => String(assignment.department?._id || assignment.department) === String(auth.departmentId),
+      );
+      if (!hasDepartmentAccess) {
+        const error = new Error('Document is not assigned to your department');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const [memberships, activeAssignments] = await Promise.all([
+        this.organizationMembershipRepository.listDepartmentMembersByRole({
+          organizationId: auth.organizationId,
+          departmentId: auth.departmentId,
+          roleName: ROLES.USER,
+          status: 'active',
+        }),
+        this.documentAssignmentRepository.listActiveByDocument({
+          documentId,
+          targetType: 'USER',
+        }),
+      ]);
+
+      return {
+        mode: 'users',
+        document: document.toPublic(),
+        assignedUserIds: activeAssignments
+          .filter((assignment) => String(assignment.department?._id || assignment.department) === String(auth.departmentId))
+          .map((assignment) => String(assignment.user?._id || assignment.user)),
+        users: memberships
+          .filter((membership) => membership.user)
+          .map((membership) => ({
+            id: membership.user._id,
+            name: membership.user.name,
+            email: membership.user.email,
+          })),
+      };
+    }
+
+    const error = new Error('Not allowed to assign documents');
+    error.statusCode = 403;
+    throw error;
+  }
+
+
+
+
+  async assignDepartments({ auth, documentId, departmentIds }) {
+    this.requireOrgAdmin(auth);
+
+    const normalizedDepartmentIds = this.normalizeObjectIds(departmentIds, 'departmentIds');
+    const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
+    if (!document || document.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
+      const error = new Error('Document not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const departmentsResult = await this.departmentRepository.listByOrganization({
+      organizationId: auth.organizationId,
+      status: 'active',
+      limit: 100,
+      skip: 0,
+    });
+    const validDepartmentIds = new Set(departmentsResult.map((department) => String(department._id)));
+    const invalidIds = normalizedDepartmentIds.filter((departmentId) => !validDepartmentIds.has(String(departmentId)));
+    if (invalidIds.length) {
+      const error = new Error('One or more departments are outside your organization or inactive');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await this.documentAssignmentRepository.syncDepartmentAssignments({
+      document: document._id,
+      organizationId: auth.organizationId,
+      departmentIds: normalizedDepartmentIds,
+      assignedBy: auth.userId,
+    });
+
+    return this.getAssignmentTargets({ auth, documentId });
+  }
+
+
+
+  async assignUsers({ auth, documentId, userIds }) {
+    if (auth.roleName !== ROLES.DEPT_ADMIN) {
+      const error = new Error('Only department admins can assign documents to users');
+      error.statusCode = 403;
+      throw error;
+    }
+    this.requireDepartmentContext(auth);
+
+    const normalizedUserIds = this.normalizeObjectIds(userIds, 'userIds');
+    const targets = await this.getAssignmentTargets({ auth, documentId });
+    const validUserIds = new Set(targets.users.map((user) => String(user.id)));
+    const invalidIds = normalizedUserIds.filter((userId) => !validUserIds.has(String(userId)));
+    if (invalidIds.length) {
+      const error = new Error('One or more users are outside your department');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await this.documentAssignmentRepository.syncUserAssignments({
+      document: documentId,
+      organizationId: auth.organizationId,
+      departmentId: auth.departmentId,
+      userIds: normalizedUserIds,
+      assignedBy: auth.userId,
+    });
+
+    return this.getAssignmentTargets({ auth, documentId });
+  }
+
+
+  
   async deleteDocument({ auth, documentId }) {
     this.requireOrgAdmin(auth);
 

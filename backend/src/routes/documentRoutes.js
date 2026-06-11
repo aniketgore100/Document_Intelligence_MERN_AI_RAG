@@ -5,8 +5,11 @@ import { authorize } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 import { ACTIONS } from '../constants/actions.js';
 import {
+  assignDepartments,
+  assignUsers,
   createUploadSession,
   completeUpload,
+  getAssignmentTargets,
   listDocuments,
   deleteDocument,
 } from '../controllers/document.js';
@@ -49,13 +52,47 @@ router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
 
 
 
-router.get('/', protect, authorize(ACTIONS.DOCUMENT.READ),
+router.get('/', protect,
   validate([
     query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
     query('status').optional().isString().trim(),
   ]),
   listDocuments,
+);
+
+router.get(
+  '/:id/assignment-targets',
+  protect,
+  authorize(ACTIONS.DOCUMENT.ASSIGN),
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+  ]),
+  getAssignmentTargets,
+);
+
+router.patch(
+  '/:id/assign-departments',
+  protect,
+  authorize(ACTIONS.DOCUMENT.ASSIGN),
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+    body('departmentIds').isArray({ max: 100 }).withMessage('departmentIds must be an array'),
+    body('departmentIds.*').isMongoId().withMessage('Each department id must be valid'),
+  ]),
+  assignDepartments,
+);
+
+router.patch(
+  '/:id/assign-users',
+  protect,
+  authorize(ACTIONS.DOCUMENT.ASSIGN),
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+    body('userIds').isArray({ max: 500 }).withMessage('userIds must be an array'),
+    body('userIds.*').isMongoId().withMessage('Each user id must be valid'),
+  ]),
+  assignUsers,
 );
 
 

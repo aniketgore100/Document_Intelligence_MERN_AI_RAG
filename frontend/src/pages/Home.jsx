@@ -3,6 +3,7 @@ import { ROLES } from "../constants/roles";
 import GlobalHomeView from "../components/home/GlobalHomeView";
 import DeptAdminHomeView from "../components/home/DeptAdminHomeView";
 import OrgAdminDashboard from "./OrgAdminDashboard";
+import OrgAdminDocuments from "./OrgAdminDocuments";
 
 const Home = () => {
   const roleName = useSelector((state) => state.auth.user?.roleName);
@@ -14,6 +15,9 @@ const Home = () => {
   }
   if (roleName === ROLES.DEPT_ADMIN) {
     return <DeptAdminHomeView />;
+  }
+  if (roleName === ROLES.USER) {
+    return <OrgAdminDocuments />;
   }
   return <section className="min-h-[58vh] p-1" />;
   

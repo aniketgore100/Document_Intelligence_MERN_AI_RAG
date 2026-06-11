@@ -65,6 +65,56 @@ export const listDocuments = async (req, res, next) => {
   }
 };
 
+export const getAssignmentTargets = async (req, res, next) => {
+  try {
+    const result = await documentService.getAssignmentTargets({
+      auth: req.auth,
+      documentId: req.params.id,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
+export const assignDepartments = async (req, res, next) => {
+  try {
+    const result = await documentService.assignDepartments({
+      auth: req.auth,
+      documentId: req.params.id,
+      departmentIds: req.body.departmentIds,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
+export const assignUsers = async (req, res, next) => {
+  try {
+    const result = await documentService.assignUsers({
+      auth: req.auth,
+      documentId: req.params.id,
+      userIds: req.body.userIds,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
 
 
 export const deleteDocument = async (req, res, next) => {

@@ -1,7 +1,8 @@
 {
   "scripts": {
     "start": "nodemon server.js",
-    "worker:invite-email": "node src/workers/inviteEmailWorker.js"
+    "worker:invite-email": "node src/workers/inviteEmailWorker.js",
+    "seed:department-users": "node src/scripts/createDepartmentUsers.js"
   },
   "name": "backend",
   "version": "1.0.0",

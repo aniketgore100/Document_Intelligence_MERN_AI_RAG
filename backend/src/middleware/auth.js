@@ -43,6 +43,7 @@ export const protect = async (req, res, next) => {
       organizationId: membership?.organization?._id?.toString?.() || membership?.organization?.toString?.() || null,
       organizationName: membership?.organization?.name || null,
       departmentId: membership?.department?._id?.toString?.() || membership?.department?.toString?.() || null,
+      departmentName: membership?.department?.name || null,
       permissions,
     };
 

@@ -80,6 +80,7 @@ export class AuthService {
         organizationId: auth.organizationId || null,
         organizationName: auth.organizationName || null,
         departmentId: auth.departmentId || null,
+        departmentName: auth.departmentName || null,
       },
     };
   }

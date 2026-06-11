@@ -49,11 +49,40 @@ export const documentsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Documents', 'Dashboard'],
     }),
+
+    getDocumentAssignmentTargets: builder.query({
+      query: ({ id }) => ({
+        url: `documents/${id}/assignment-targets`,
+        method: 'GET',
+      }),
+      providesTags: ['Documents'],
+    }),
+
+    assignDocumentDepartments: builder.mutation({
+      query: ({ id, departmentIds }) => ({
+        url: `documents/${id}/assign-departments`,
+        method: 'PATCH',
+        body: { departmentIds },
+      }),
+      invalidatesTags: ['Documents'],
+    }),
+
+    assignDocumentUsers: builder.mutation({
+      query: ({ id, userIds }) => ({
+        url: `documents/${id}/assign-users`,
+        method: 'PATCH',
+        body: { userIds },
+      }),
+      invalidatesTags: ['Documents'],
+    }),
   }),
 });
 
 export const {
+  useAssignDocumentDepartmentsMutation,
+  useAssignDocumentUsersMutation,
   useGetDocumentsQuery,
+  useLazyGetDocumentAssignmentTargetsQuery,
   useCreateDocumentUploadUrlMutation,
   useCompleteDocumentUploadMutation,
   useDeleteDocumentMutation,
