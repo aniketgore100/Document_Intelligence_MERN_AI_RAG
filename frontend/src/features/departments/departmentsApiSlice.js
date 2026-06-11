@@ -35,7 +35,20 @@ export const departmentsApiSlice = apiSlice.injectEndpoints({
         }),
         providesTags: (result, error, { deptId }) => [{ type: "Department", id: deptId }],
       }),
+
+      getDepartmentAnalytics: builder.query({
+        query: ({ orgId, deptId }) => ({
+          url: `departments/department/${orgId}/${deptId}/analytics`,
+          method: "GET",
+        }),
+        providesTags: (result, error, { deptId }) => [{ type: "Department", id: `${deptId}-analytics` }],
+      }),
   }),
 });
 
-export const { useGetDepartmentsQuery, useCreateDepartmentMutation, useGetDepartmentByIdQuery } = departmentsApiSlice;
+export const {
+  useGetDepartmentsQuery,
+  useCreateDepartmentMutation,
+  useGetDepartmentByIdQuery,
+  useGetDepartmentAnalyticsQuery,
+} = departmentsApiSlice;

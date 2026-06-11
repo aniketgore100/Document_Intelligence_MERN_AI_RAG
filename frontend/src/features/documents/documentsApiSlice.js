@@ -64,7 +64,7 @@ export const documentsApiSlice = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: { departmentIds },
       }),
-      invalidatesTags: ['Documents'],
+      invalidatesTags: ['Documents', 'Dashboard', 'Department'],
     }),
 
     assignDocumentUsers: builder.mutation({
@@ -73,7 +73,7 @@ export const documentsApiSlice = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: { userIds },
       }),
-      invalidatesTags: ['Documents'],
+      invalidatesTags: ['Documents', 'Dashboard', 'Department'],
     }),
   }),
 });

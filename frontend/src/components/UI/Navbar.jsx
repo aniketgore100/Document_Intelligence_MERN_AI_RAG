@@ -43,7 +43,7 @@ const resolveOrganizationName = (user) =>
 
 const UserBadge = ({ user, initials }) => (
   <div className="group relative flex items-center gap-2 px-1 py-0.5">
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white">
+    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-[11px] font-semibold text-white">
       {initials}
     </div>
     <div className="hidden pr-1 md:block">
@@ -112,8 +112,8 @@ const Navbar = ({ user, onMenuToggle }) => {
         : "Workspace";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/30 bg-transparent px-2 py-1.5 shadow-[0_2px_10px_-8px_rgba(15,23,42,0.28)] md:px-3 dark:border-slate-700/30 dark:shadow-[0_2px_10px_-8px_rgba(15,23,42,0.45)]">
-      <div className="mb-1.5 md:hidden">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/95 px-2 py-1 shadow-[0_2px_10px_-8px_rgba(15,23,42,0.28)] backdrop-blur-md md:px-3 dark:border-slate-700/60 dark:bg-slate-950/95 dark:shadow-[0_2px_10px_-8px_rgba(15,23,42,0.45)]">
+      <div className="mb-1 md:hidden">
         <button
           type="button"
           onClick={onMenuToggle}
@@ -125,11 +125,11 @@ const Navbar = ({ user, onMenuToggle }) => {
       </div>
 
       {isGlobalAdminHome ? (
-        <div className="space-y-1.5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">Global Admin Home</h1>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage organizations and organization admin invitations from here.</p>
+              <h1 className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">Global Admin Home</h1>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Manage organizations and organization admin invitations from here.</p>
             </div>
             <div className="flex items-center gap-1.5">
               <ThemeToggle />
@@ -158,11 +158,11 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : isOrgAdminHome ? (
-        <div className="space-y-1.5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{orgAdminOrganizationName}</h1>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage your organization workspace from here.</p>
+              <h1 className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">{orgAdminOrganizationName}</h1>
+              {/* <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Manage your organization workspace from here.</p> */}
             </div>
             <div className="flex items-center gap-1.5">
               <ThemeToggle />
@@ -188,11 +188,11 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : isDeptAdminHome ? (
-        <div className="space-y-1.5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight text-slate-800 dark:text-slate-100">{organizationDisplayName}</h1>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Manage your department workspace from here.</p>
+              <h1 className="text-base font-semibold leading-tight text-slate-800 dark:text-slate-100">{organizationDisplayName}</h1>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Manage your department workspace from here.</p>
             </div>
             <div className="flex items-center gap-1.5">
               <ThemeToggle />
@@ -217,8 +217,8 @@ const Navbar = ({ user, onMenuToggle }) => {
           </div>
         </div>
       ) : (
-        <div className="space-y-1.5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <h1 className="text-base font-medium text-slate-800 dark:text-slate-100">{pageName}</h1>
             </div>

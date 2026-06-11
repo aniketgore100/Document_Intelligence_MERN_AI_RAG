@@ -1,4 +1,37 @@
+import mongoose from 'mongoose';
 import DocumentAssignment from '../models/DocumentAssignment.js';
+
+const ANALYTICS_TIMEZONE = 'Asia/Kolkata';
+const toObjectId = (value) =>
+  mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(value) : value;
+
+const buildDailySeriesPipeline = ({ match, dateField, days }) => {
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  startDate.setDate(startDate.getDate() - (days - 1));
+
+  return [
+    {
+      $match: {
+        ...match,
+        [dateField]: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: `$${dateField}`,
+            timezone: ANALYTICS_TIMEZONE,
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ];
+};
 
 export class DocumentAssignmentRepository {
   listActiveByDocument({ documentId, targetType } = {}) {
@@ -41,6 +74,45 @@ export class DocumentAssignmentRepository {
       targetType: 'USER',
       status: 'active',
     }).distinct('document');
+  }
+
+  countActiveDepartmentDocuments({ organizationId, departmentId }) {
+    return DocumentAssignment.countDocuments({
+      organization: organizationId,
+      department: departmentId,
+      targetType: 'DEPARTMENT',
+      status: 'active',
+    });
+  }
+
+  dailyDepartmentDocumentsAdded({ organizationId, departmentId, days = 7 }) {
+    return DocumentAssignment.aggregate(
+      buildDailySeriesPipeline({
+        match: {
+          organization: toObjectId(organizationId),
+          department: toObjectId(departmentId),
+          targetType: 'DEPARTMENT',
+          status: 'active',
+        },
+        dateField: 'assignedAt',
+        days,
+      }),
+    );
+  }
+
+  dailyOrganizationDepartmentDocumentsAdded({ organizationId, days = 7 }) {
+    return DocumentAssignment.aggregate(
+      buildDailySeriesPipeline({
+        match: {
+          organization: toObjectId(organizationId),
+          department: { $ne: null },
+          targetType: 'DEPARTMENT',
+          status: 'active',
+        },
+        dateField: 'assignedAt',
+        days,
+      }),
+    );
   }
 
   async syncDepartmentAssignments({ document, organizationId, departmentIds, assignedBy }) {

@@ -67,3 +67,33 @@ body {
     color: rgb(var(--muted));
   }
 }
+
+.app-content h1,
+.app-content h2,
+.app-content h3,
+.app-content h4,
+.app-content h5,
+.app-content h6,
+.app-content th,
+.app-content p[class*="font-bold"]:not([class*="text-2xl"]):not([class*="text-3xl"]):not([class*="text-4xl"]) {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.app-content p:not([class*="font-bold"]):not([class*="text-2xl"]):not([class*="text-3xl"]):not([class*="text-4xl"]),
+.app-content td,
+.app-content label,
+.app-content button,
+.app-content input,
+.app-content textarea,
+.app-content select {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+.app-content p[class*="text-2xl"],
+.app-content p[class*="text-3xl"],
+.app-content p[class*="text-4xl"] {
+  font-size: 1.5rem !important;
+  line-height: 2rem !important;
+}

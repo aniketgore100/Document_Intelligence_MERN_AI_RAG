@@ -32,7 +32,7 @@ const AppLayout = () => {
 
       <div className="flex min-w-0 flex-1 flex-col px-1.5 py-1.5 sm:px-2 sm:py-2">
         <Navbar user={user} onMenuToggle={() => setIsMobileSidebarOpen((prev) => !prev)} />
-        <main className="mt-2 flex-1 overflow-x-auto rounded-xl border bg-transparent p-1.5">
+        <main className="app-content mt-2 flex-1 overflow-x-auto bg-transparent p-1.5">
           <Outlet />
         </main>
       </div>

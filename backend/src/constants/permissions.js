@@ -5,6 +5,7 @@ export const DEFAULT_MEMBERSHIP_PERMISSIONS = Object.freeze({
   [ROLES.GLOBAL_ADMIN]: Object.freeze([]),
   [ROLES.ORG_ADMIN]: Object.freeze([]),
   [ROLES.DEPT_ADMIN]: Object.freeze([
+    ACTIONS.DEPARTMENT.READ,
     ACTIONS.USER.CREATE,
     ACTIONS.USER.READ,
     ACTIONS.USER.DELETE,
@@ -26,6 +27,7 @@ export const PERMISSION_MANAGEMENT_SCOPE = Object.freeze({
 
 export const MANAGED_PERMISSION_OPTIONS = Object.freeze({
   [ROLES.DEPT_ADMIN]: Object.freeze([
+    ACTIONS.DEPARTMENT.READ,
     ACTIONS.USER.CREATE,
     ACTIONS.USER.READ,
     ACTIONS.USER.DELETE,

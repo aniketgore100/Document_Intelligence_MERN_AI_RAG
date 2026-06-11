@@ -1,20 +1,55 @@
 import mongoose from "mongoose";
 import { DepartmentRepository } from "../repositories/departmentRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
+import { DocumentAssignmentRepository } from "../repositories/documentAssignmentRepository.js";
+import { DocumentRepository } from "../repositories/documentRepository.js";
 import { OrganizationInviteService } from "./organizationInviteService.js";
 import { ROLES } from "../constants/roles.js";
+import { DOCUMENT_UPLOAD } from "../constants/documents.js";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const toId = (value) => value?._id || value;
+const ANALYTICS_DAYS = 7;
+const ANALYTICS_MEMBER_ROLES = [ROLES.DEPT_ADMIN, ROLES.USER];
+const ANALYTICS_TIMEZONE = "Asia/Kolkata";
+const analyticsDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: ANALYTICS_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const buildEmptyDailySeries = (days = ANALYTICS_DAYS) => {
+  const series = [];
+  for (let index = days - 1; index >= 0; index -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - index);
+    const key = analyticsDateFormatter.format(date);
+    series.push({ date: key, count: 0 });
+  }
+  return series;
+};
+
+const normalizeDailySeries = (rows, days = ANALYTICS_DAYS) => {
+  const countsByDate = new Map(rows.map((row) => [row._id, row.count]));
+  return buildEmptyDailySeries(days).map((item) => ({
+    ...item,
+    count: countsByDate.get(item.date) || 0,
+  }));
+};
 
 export class DepartmentService {
   constructor({
     departmentRepository = new DepartmentRepository(),
     organizationMembershipRepository = new OrganizationMembershipRepository(),
+    documentAssignmentRepository = new DocumentAssignmentRepository(),
+    documentRepository = new DocumentRepository(),
     organizationInviteService = new OrganizationInviteService(),
   } = {}) {
     this.departmentRepository = departmentRepository;
     this.organizationMembershipRepository = organizationMembershipRepository;
+    this.documentAssignmentRepository = documentAssignmentRepository;
+    this.documentRepository = documentRepository;
     this.organizationInviteService = organizationInviteService;
   }
 
@@ -377,6 +412,74 @@ async getDepartmentById({ orgId, deptId, userId, roleName }) {
           email: departmentAdmin.user?.email || null,
         }
       : null,
+  };
+}
+
+async getDepartmentAnalytics({ orgId, deptId, userId, roleName }) {
+  const department = await this.getDepartmentById({ orgId, deptId, userId, roleName });
+  const organizationId = toId(department.organization);
+
+  const [
+    totalUsers,
+    totalActiveUsers,
+    totalDepartmentDocs,
+    totalOrganizationDocs,
+    dailyUsersRaw,
+    dailyDocumentsRaw,
+  ] = await Promise.all([
+    this.organizationMembershipRepository.countDepartmentMembers({
+      organizationId,
+      departmentId: deptId,
+      roleNames: ANALYTICS_MEMBER_ROLES,
+    }),
+    this.organizationMembershipRepository.countDepartmentMembers({
+      organizationId,
+      departmentId: deptId,
+      roleNames: ANALYTICS_MEMBER_ROLES,
+      status: "active",
+    }),
+    this.documentAssignmentRepository.countActiveDepartmentDocuments({
+      organizationId,
+      departmentId: deptId,
+    }),
+    this.documentRepository.countByOrganization({
+      organizationId,
+      status: DOCUMENT_UPLOAD.STATUSES.ACTIVE,
+    }),
+    this.organizationMembershipRepository.dailyDepartmentMembersAdded({
+      organizationId,
+      departmentId: deptId,
+      roleNames: ANALYTICS_MEMBER_ROLES,
+      days: ANALYTICS_DAYS,
+    }),
+    this.documentAssignmentRepository.dailyDepartmentDocumentsAdded({
+      organizationId,
+      departmentId: deptId,
+      days: ANALYTICS_DAYS,
+    }),
+  ]);
+
+  const workloadPercent = totalOrganizationDocs > 0
+    ? Number(((totalDepartmentDocs / totalOrganizationDocs) * 100).toFixed(1))
+    : 0;
+
+  return {
+    department: {
+      id: department.id,
+      name: department.name,
+      organization: department.organization,
+    },
+    totals: {
+      users: totalUsers,
+      activeUsers: totalActiveUsers,
+      documents: totalDepartmentDocs,
+      organizationDocuments: totalOrganizationDocs,
+      workloadPercent,
+    },
+    daily: {
+      usersAdded: normalizeDailySeries(dailyUsersRaw, ANALYTICS_DAYS),
+      documentsAdded: normalizeDailySeries(dailyDocumentsRaw, ANALYTICS_DAYS),
+    },
   };
 }
 }

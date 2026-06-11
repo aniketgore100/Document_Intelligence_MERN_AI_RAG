@@ -89,3 +89,22 @@ export const getDepartmentById = async(req, res, next) => {
     next(error);
   }
 }
+
+export const getDepartmentAnalytics = async(req, res, next) => {
+  try {
+    const { orgId, deptId } = req.params;
+    const analytics = await departmentService.getDepartmentAnalytics({
+      orgId,
+      deptId,
+      userId: req.user?._id || req.user?.id || null,
+      roleName: req.auth?.roleName || null,
+    });
+
+    return res.status(200).json({
+      message: "Department analytics fetched successfully",
+      analytics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

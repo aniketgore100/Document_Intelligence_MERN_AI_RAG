@@ -223,7 +223,7 @@ const OrgAdminHomeView = () => {
           <div className="min-w-[780px] shrink-0">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur dark:bg-slate-900/60">
-                <tr className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-300">
+                <tr className="text-xs font-semibold   tracking-[0.14em] text-slate-500 dark:text-slate-300">
                   <th className="border border-slate-200 px-4 py-2 text-left dark:border-slate-700">
                     Department Name
                   </th>
@@ -253,12 +253,12 @@ const OrgAdminHomeView = () => {
                     }`}
                   >
                     <td className="border border-slate-200 px-4 py-2 align-middle dark:border-slate-700">
-                      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{row.name}</p>
+                      <p className="text-xs font-medium text-slate-800 dark:text-slate-100">{row.name}</p>
                     </td>
                     <td className="border border-slate-200 px-4 py-2 align-middle text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {row.adminName || row.adminEmail ? (
                         <div className="space-y-0.5">
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                          <p className="text-xs font-medium text-slate-800 dark:text-slate-100">
                             {row.adminName || row.adminEmail}
                           </p>
                           {row.adminEmail && row.adminName ? (
@@ -296,7 +296,7 @@ const OrgAdminHomeView = () => {
                     <td className="border border-slate-200 px-4 py-2 text-center align-middle dark:border-slate-700">
                       {renderStatusBadge(row.status)}
                     </td>
-                    <td className="border border-slate-200 px-4 py-2 text-center align-middle text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                    <td className="border border-slate-200 px-4 py-2 text-center align-middle text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {row.createdAt}
                     </td>
                     <td className="border border-slate-200 px-4 py-2 align-middle dark:border-slate-700">
@@ -320,7 +320,7 @@ const OrgAdminHomeView = () => {
                                 openDepartment(row, row.id);
                               }}
                               disabled={!row.adminName && !row.adminEmail}
-                              className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                              className="w-full rounded-md px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-800"
                             >
                               Open
                             </button>
@@ -336,7 +336,7 @@ const OrgAdminHomeView = () => {
                                     email: row.inviteEmail || row.adminEmail,
                                   });
                                 }}
-                                className="w-full rounded-md px-3 py-2 text-left text-sm text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                                className="w-full rounded-md px-3 py-2 text-left text-xs text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
                               >
                                 Invite Again
                               </button>
@@ -351,7 +351,7 @@ const OrgAdminHomeView = () => {
             </table>
           </div>
           {pagination ? (
-            <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
+            <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
               <p className="text-slate-500 dark:text-slate-400">
                 Page {pagination.page} of {pagination.totalPages} - {pagination.total} departments
               </p>
@@ -360,7 +360,7 @@ const OrgAdminHomeView = () => {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={!pagination.hasPrevPage}
-                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <ChevronLeft size={14} />
                   Prev
@@ -369,7 +369,7 @@ const OrgAdminHomeView = () => {
                   type="button"
                   onClick={() => setPage((current) => current + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Next
                   <ChevronRight size={14} />

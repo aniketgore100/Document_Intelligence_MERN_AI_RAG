@@ -3,6 +3,25 @@ import { setCredentials } from './authSlice';
 
 export const authApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    getMe: builder.query({
+      query: () => ({
+        url: '/auth/me',
+        method: 'GET',
+      }),
+      async onQueryStarted(_, { dispatch, getState, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const token = getState()?.auth?.token;
+          if (token && data?.user) {
+            dispatch(setCredentials({ user: data.user, token }));
+          }
+        } catch {
+          // Auth guard handles invalid sessions globally.
+        }
+      },
+      providesTags: ['Auth'],
+    }),
+
     login: builder.mutation({
       query: (payload) => ({
         url: '/auth/login',
@@ -22,4 +41,4 @@ export const authApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation } = authApiSlice;
+export const { useGetMeQuery, useLoginMutation } = authApiSlice;

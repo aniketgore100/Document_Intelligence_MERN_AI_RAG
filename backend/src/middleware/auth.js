@@ -33,7 +33,7 @@ export const protect = async (req, res, next) => {
               roleName,
             })
           : null;
-    const permissions = membership?.permissions?.length
+    const permissions = Array.isArray(membership?.permissions)
       ? membership.permissions
       : getDefaultPermissionsForRole(roleName);
     req.auth = {

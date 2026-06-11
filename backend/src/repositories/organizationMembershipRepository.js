@@ -1,4 +1,37 @@
+import mongoose from "mongoose";
 import OrganizationMembership from "../models/OrganizationMembership.js";
+
+const ANALYTICS_TIMEZONE = "Asia/Kolkata";
+const toObjectId = (value) =>
+  mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(value) : value;
+
+const buildDailySeriesPipeline = ({ match, dateField, days }) => {
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  startDate.setDate(startDate.getDate() - (days - 1));
+
+  return [
+    {
+      $match: {
+        ...match,
+        [dateField]: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: `$${dateField}`,
+            timezone: ANALYTICS_TIMEZONE,
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ];
+};
 
 export class OrganizationMembershipRepository {
   create(payload, options = {}) {
@@ -95,6 +128,55 @@ export class OrganizationMembershipRepository {
     })
       .populate("user", "name email")
       .populate("department", "name slug");
+  }
+
+  countDepartmentMembers({ organizationId, departmentId, roleNames, status }) {
+    const filter = {
+      organization: organizationId,
+      department: departmentId,
+      roleName: { $in: roleNames },
+    };
+    if (status) filter.status = status;
+    return OrganizationMembership.countDocuments(filter);
+  }
+
+  countOrganizationMembers({ organizationId, roleNames, status }) {
+    const filter = {
+      organization: organizationId,
+    };
+    if (roleNames?.length) filter.roleName = { $in: roleNames };
+    if (status) filter.status = status;
+    return OrganizationMembership.countDocuments(filter);
+  }
+
+  dailyDepartmentMembersAdded({ organizationId, departmentId, roleNames, days = 7 }) {
+    return OrganizationMembership.aggregate(
+      buildDailySeriesPipeline({
+        match: {
+          organization: toObjectId(organizationId),
+          department: toObjectId(departmentId),
+          roleName: { $in: roleNames },
+          status: "active",
+        },
+        dateField: "joinedAt",
+        days,
+      })
+    );
+  }
+
+  dailyOrganizationDepartmentMembersAdded({ organizationId, roleNames, days = 7 }) {
+    return OrganizationMembership.aggregate(
+      buildDailySeriesPipeline({
+        match: {
+          organization: toObjectId(organizationId),
+          department: { $ne: null },
+          roleName: { $in: roleNames },
+          status: "active",
+        },
+        dateField: "joinedAt",
+        days,
+      })
+    );
   }
 
   findById(id) {

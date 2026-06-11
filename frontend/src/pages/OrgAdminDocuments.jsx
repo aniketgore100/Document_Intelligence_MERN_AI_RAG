@@ -252,26 +252,28 @@ const OrgAdminDocuments = () => {
   };
 
   const renderAssignedBadges = (document) => {
-    const assignedDepartments = document.assignedDepartments || [];
+    const assignedTargets = user?.roleName === ROLES.DEPT_ADMIN
+      ? document.assignedUsers || []
+      : document.assignedDepartments || [];
 
-    if (!assignedDepartments.length) {
+    if (!assignedTargets.length) {
       return <span className="text-xs muted">Unassigned</span>;
     }
 
     return (
       <div className="flex -space-x-2">
-        {assignedDepartments.slice(0, 5).map((department, index) => (
+        {assignedTargets.slice(0, 5).map((target, index) => (
           <span
-            key={department.id || department.name}
-            title={department.name}
+            key={target.id || target.email || target.name}
+            title={target.email ? `${target.name || target.email} (${target.email})` : target.name}
             className={`inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-[10px] font-semibold text-white dark:border-slate-900 ${badgeColors[index % badgeColors.length]}`}
           >
-            {getInitials(department.name)}
+            {getInitials(target.name || target.email)}
           </span>
         ))}
-        {assignedDepartments.length > 5 ? (
+        {assignedTargets.length > 5 ? (
           <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-slate-700 px-1 text-[10px] font-semibold text-white dark:border-slate-900">
-            +{assignedDepartments.length - 5}
+            +{assignedTargets.length - 5}
           </span>
         ) : null}
       </div>
@@ -542,22 +544,22 @@ const OrgAdminDocuments = () => {
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur dark:bg-slate-900/60">
               <tr>
-                <th className="border border-slate-200 px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                <th className="border border-slate-200 px-4 py-2 text-left text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                   Document Name
                 </th>
-                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                   Size
                 </th>
-                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                   Upload Time
                 </th>
                 {canAssignDocs ? (
-                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                     Assign
                   </th>
                 ) : null}
                 {canManageDocs ? (
-                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                  <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                     Actions
                   </th>
                 ) : null}
@@ -567,7 +569,7 @@ const OrgAdminDocuments = () => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)} className="px-4 py-4 text-sm muted">
+                  <td colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)} className="px-4 py-4 text-xs muted">
                     Loading...
                   </td>
                 </tr>
@@ -583,17 +585,17 @@ const OrgAdminDocuments = () => {
                           <FileText size={12} />
                         </span>
 
-                        <span className="break-all text-sm font-medium text-slate-800 dark:text-slate-100">
+                        <span className="break-all text-xs font-medium text-slate-800 dark:text-slate-100">
                           {document.originalName}
                         </span>
                       </div>
                     </td>
 
-                    <td className="whitespace-nowrap border border-slate-200 px-4 py-2 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                    <td className="whitespace-nowrap border border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {formatBytes(document.sizeBytes)}
                     </td>
 
-                    <td className="whitespace-nowrap border border-slate-200 px-4 py-2 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                    <td className="whitespace-nowrap border border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {document.uploadedLabel}
                     </td>
 
@@ -642,7 +644,7 @@ const OrgAdminDocuments = () => {
                                   handleDelete(document.id);
                                 }}
                                 disabled={document.status === 'DELETED'}
-                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
                               >
                                 <Trash2 size={13} />
                                 Delete
@@ -658,7 +660,7 @@ const OrgAdminDocuments = () => {
                 <tr>
                   <td
                     colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)}
-                    className="px-4 py-6 text-center text-sm muted"
+                    className="px-4 py-6 text-center text-xs muted"
                   >
                     No documents uploaded yet.
                   </td>
@@ -670,7 +672,7 @@ const OrgAdminDocuments = () => {
       </div>
 
       {pagination ? (
-        <div className="flex items-center justify-between px-1 text-sm">
+        <div className="flex items-center justify-between px-1 text-xs">
           <p className="muted">
             Page {pagination.page} of {pagination.totalPages}
           </p>
@@ -679,7 +681,7 @@ const OrgAdminDocuments = () => {
               type="button"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={!pagination.hasPrevPage}
-              className="rounded-xl border bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/60 dark:text-slate-200"
+              className="rounded-xl border bg-white/80 px-3 py-2 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/60 dark:text-slate-200"
             >
               Prev
             </button>
@@ -687,7 +689,7 @@ const OrgAdminDocuments = () => {
               type="button"
               onClick={() => setPage((prev) => prev + 1)}
               disabled={!pagination.hasNextPage}
-              className="rounded-xl border bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/60 dark:text-slate-200"
+              className="rounded-xl border bg-white/80 px-3 py-2 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/60 dark:text-slate-200"
             >
               Next
             </button>

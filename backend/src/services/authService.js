@@ -53,7 +53,7 @@ export class AuthService {
             })
           : null;
     const token = signToken({ id: user._id });
-    const permissions = membership?.permissions?.length
+    const permissions = Array.isArray(membership?.permissions)
       ? membership.permissions
       : getDefaultPermissionsForRole(roleDoc?.name || null);
 

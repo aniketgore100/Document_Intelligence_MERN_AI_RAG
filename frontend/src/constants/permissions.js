@@ -3,6 +3,11 @@ import { ROLES } from "./roles";
 export const DEPARTMENT_PERMISSION_OPTIONS = Object.freeze({
   [ROLES.DEPT_ADMIN]: Object.freeze([
     {
+      value: "department:read",
+      label: "View department",
+      description: "Access department details and analytics.",
+    },
+    {
       value: "user:create",
       label: "Create users",
       description: "Invite new department members.",
