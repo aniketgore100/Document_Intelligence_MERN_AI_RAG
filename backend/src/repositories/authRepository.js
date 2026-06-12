@@ -17,6 +17,10 @@ export class AuthRepository {
     return User.findById(id);
   }
 
+  async saveUser(userDoc) {
+    return userDoc.save();
+  }
+
   async countUsers() {
     return User.countDocuments();
   }

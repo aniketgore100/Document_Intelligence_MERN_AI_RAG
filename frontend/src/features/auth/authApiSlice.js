@@ -38,7 +38,27 @@ export const authApiSlice = apiSlice.injectEndpoints({
       },
       invalidatesTags: ['Auth'],
     }),
+
+    updateMe: builder.mutation({
+      query: (payload) => ({
+        url: '/auth/me',
+        method: 'PATCH',
+        body: payload,
+      }),
+      async onQueryStarted(_, { dispatch, getState, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const token = getState()?.auth?.token;
+          if (token && data?.user) {
+            dispatch(setCredentials({ user: data.user, token }));
+          }
+        } catch {
+          // Surface errors through the mutation hook.
+        }
+      },
+      invalidatesTags: ['Auth'],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useLoginMutation } = authApiSlice;
+export const { useGetMeQuery, useLoginMutation, useUpdateMeMutation } = authApiSlice;

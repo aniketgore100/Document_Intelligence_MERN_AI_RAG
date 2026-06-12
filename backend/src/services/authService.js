@@ -84,4 +84,24 @@ export class AuthService {
       },
     };
   }
+
+  async updateMe({ userId, name, auth = {} }) {
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    if (normalizedName.length < 2 || normalizedName.length > 60) {
+      const err = new Error("Name must be 2-60 characters");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      const err = new Error("User not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    user.name = normalizedName;
+    const updatedUser = await this.authRepository.saveUser(user);
+    return this.getMe(updatedUser, auth);
+  }
 }

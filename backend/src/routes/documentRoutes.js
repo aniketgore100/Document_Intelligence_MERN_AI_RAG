@@ -4,6 +4,8 @@ import { protect } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 import { ACTIONS } from '../constants/actions.js';
+import { ROLES } from '../constants/roles.js';
+import { can } from '../security/policy.js';
 import {
   assignDepartments,
   assignUsers,
@@ -15,6 +17,19 @@ import {
 } from '../controllers/document.js';
 
 const router = Router();
+
+const authorizeDocumentList = (req, res, next) => {
+  const action = req.auth?.roleName === ROLES.USER
+    ? ACTIONS.DOCUMENT.READ_ASSIGNED
+    : ACTIONS.DOCUMENT.READ;
+  const decision = can(req.auth, action);
+
+  if (!decision.allowed) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  return next();
+};
 
 router.post('/upload-url', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   validate([
@@ -53,6 +68,7 @@ router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
 
 
 router.get('/', protect,
+  authorizeDocumentList,
   validate([
     query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),

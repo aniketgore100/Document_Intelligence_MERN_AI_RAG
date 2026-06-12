@@ -34,3 +34,20 @@ export const login = async (req, res, next) => {
 export const getMe = async (req, res) => {
   res.json(authService.getMe(req.user, req.auth));
 };
+
+export const updateMe = async (req, res, next) => {
+  try {
+    const result = await authService.updateMe({
+      userId: req.user?._id || req.user?.id || null,
+      name: req.body.name,
+      auth: req.auth,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
