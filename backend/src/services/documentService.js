@@ -104,7 +104,7 @@ export class DocumentService {
     };
   }
 
-  async attachAssignmentSummaries(documents) {
+  async attachAssignmentSummaries(documents, auth = null) {
     const documentIds = documents.map((document) => document._id);
     if (!documentIds.length) return [];
 
@@ -119,16 +119,35 @@ export class DocumentService {
       grouped.get(documentId).push(this.serializeAssignment(assignment));
     }
 
+    const isDeptAdmin = auth?.roleName === ROLES.DEPT_ADMIN;
+    const isUser = auth?.roleName === ROLES.USER;
+
     return documents.map((document) => {
       const publicDocument = document.toPublic();
+
+      // Users have no need for cross-department assignment metadata
+      if (isUser) {
+        return { ...publicDocument, assignedDepartments: [], assignedUsers: [] };
+      }
+
       const documentAssignments = grouped.get(String(document._id)) || [];
+
+      // Dept admins only see assignments scoped to their own department.
+      // USER-type assignments store the assigning department on `assignment.department`,
+      // so this single filter covers both DEPARTMENT and USER targetTypes correctly.
+      const visibleAssignments = isDeptAdmin
+        ? documentAssignments.filter(
+            (a) => String(a.department?.id) === String(auth.departmentId),
+          )
+        : documentAssignments;
+
       return {
         ...publicDocument,
-        assignedDepartments: documentAssignments
+        assignedDepartments: visibleAssignments
           .filter((assignment) => assignment.targetType === 'DEPARTMENT')
           .map((assignment) => assignment.department)
           .filter(Boolean),
-        assignedUsers: documentAssignments
+        assignedUsers: visibleAssignments
           .filter((assignment) => assignment.targetType === 'USER')
           .map((assignment) => assignment.user)
           .filter(Boolean),
@@ -470,7 +489,7 @@ export class DocumentService {
     }
 
     return {
-      documents: await this.attachAssignmentSummaries(documents),
+      documents: await this.attachAssignmentSummaries(documents, auth),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -509,14 +528,31 @@ export class DocumentService {
     }
 
     if (auth.roleName === ROLES.USER) {
-      const userAssignments = await this.documentAssignmentRepository.listActiveByDocument({
-        documentId,
-        targetType: 'USER',
-      });
-      const hasUserAccess = userAssignments.some(
-        (assignment) => String(assignment.user?._id || assignment.user) === String(auth.userId),
+      // Fetch both assignment types concurrently so we can validate the full
+      // hierarchy: user assignment must exist AND its parent department must
+      // still hold an active DEPARTMENT assignment.
+      const [userAssignments, departmentAssignments] = await Promise.all([
+        this.documentAssignmentRepository.listActiveByDocument({
+          documentId,
+          targetType: 'USER',
+        }),
+        this.documentAssignmentRepository.listActiveByDocument({
+          documentId,
+          targetType: 'DEPARTMENT',
+        }),
+      ]);
+
+      const userAssignment = userAssignments.find(
+        (a) => String(a.user?._id || a.user) === String(auth.userId),
       );
-      if (hasUserAccess) return document;
+
+      if (userAssignment) {
+        const assigningDeptId = String(userAssignment.department?._id || userAssignment.department);
+        const parentDeptActive = departmentAssignments.some(
+          (a) => String(a.department?._id || a.department) === assigningDeptId,
+        );
+        if (parentDeptActive) return document;
+      }
     }
 
     const error = new Error('Document access denied');
@@ -688,12 +724,33 @@ export class DocumentService {
       throw error;
     }
 
+    // Compute which departments are losing access before the sync so we can
+    // cascade-revoke their user assignments immediately after.
+    const currentDeptAssignments = await this.documentAssignmentRepository.listActiveByDocument({
+      documentId: document._id,
+      targetType: 'DEPARTMENT',
+    });
+    const newDeptIdSet = new Set(normalizedDepartmentIds.map(String));
+    const revokedDeptIds = currentDeptAssignments
+      .map((a) => String(a.department?._id || a.department))
+      .filter((id) => !newDeptIdSet.has(id));
+
     await this.documentAssignmentRepository.syncDepartmentAssignments({
       document: document._id,
       organizationId: auth.organizationId,
       departmentIds: normalizedDepartmentIds,
       assignedBy: auth.userId,
     });
+
+    // Cascade: revoke all user-level assignments that belonged to departments
+    // that just lost access. This prevents orphaned active USER rows.
+    if (revokedDeptIds.length > 0) {
+      await this.documentAssignmentRepository.revokeUserAssignmentsByDepartments({
+        documentId: document._id,
+        departmentIds: revokedDeptIds,
+        revokedBy: auth.userId,
+      });
+    }
 
     return this.getAssignmentTargets({ auth, documentId });
   }

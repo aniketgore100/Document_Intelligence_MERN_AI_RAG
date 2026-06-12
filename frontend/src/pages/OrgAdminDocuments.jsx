@@ -506,6 +506,8 @@ const OrgAdminDocuments = () => {
     .filter((document) => document.status !== 'DELETED');
 
 
+    console.log("rows :: ", rows);
+
 
   if (!canViewDocs) {
     return (

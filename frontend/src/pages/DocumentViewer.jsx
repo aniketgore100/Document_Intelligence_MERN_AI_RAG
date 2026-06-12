@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Loader2, MessageSquare, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useGetDocumentViewQuery } from "../features/documents/documentsApiSlice";
@@ -59,7 +59,7 @@ const TextPreview = ({ url }) => {
 
   if (fetchError) {
     return (
-      <div className="flex min-h-[62vh] items-center justify-center p-6">
+      <div className="flex h-full items-center justify-center p-6">
         <p className="text-xs text-rose-600 dark:text-rose-300">Failed to load file content.</p>
       </div>
     );
@@ -67,7 +67,7 @@ const TextPreview = ({ url }) => {
 
   if (content === null) {
     return (
-      <div className="flex min-h-[62vh] items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <Loader2 size={14} className="animate-spin" />
           Loading content...
@@ -77,11 +77,59 @@ const TextPreview = ({ url }) => {
   }
 
   return (
-    <pre className="h-full min-h-[62vh] overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-5 text-slate-800 dark:text-slate-200">
-      {content}
-    </pre>
+    <div className="h-full overflow-auto">
+      <pre className="min-h-full whitespace-pre-wrap break-words p-5 font-mono text-xs leading-5 text-slate-800 dark:text-slate-200">
+        {content}
+      </pre>
+    </div>
   );
 };
+
+const ChatPanel = () => (
+  <div className="flex h-full flex-col">
+    <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-2.5 dark:border-slate-800">
+      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+        <MessageSquare size={12} />
+      </span>
+      <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+        Document Q&amp;A
+      </span>
+      <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+        Coming soon
+      </span>
+    </div>
+
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60">
+        <MessageSquare size={20} className="text-slate-400 dark:text-slate-500" />
+      </div>
+      <div className="max-w-[220px]">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Ask anything about this document
+        </p>
+        <p className="mt-1.5 text-xs leading-[1.6] text-slate-500 dark:text-slate-400">
+          Multimodal RAG is coming — query text, tables, and embedded visuals across PDFs, documents, and spreadsheets in a single conversation.
+        </p>
+      </div>
+    </div>
+
+    <div className="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
+        <span className="flex-1 select-none text-xs text-slate-400 dark:text-slate-500">
+          Ask a question…
+        </span>
+        <button
+          type="button"
+          disabled
+          className="inline-flex h-6 w-6 shrink-0 cursor-not-allowed items-center justify-center rounded-lg bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+          aria-label="Send (coming soon)"
+        >
+          <Send size={11} />
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 const DocumentViewer = () => {
   const { id } = useParams();
@@ -96,7 +144,7 @@ const DocumentViewer = () => {
 
   if (isLoading) {
     return (
-      <section className="flex min-h-[58vh] items-center justify-center p-1">
+      <section className="flex h-[calc(100vh-116px)] items-center justify-center p-1">
         <div className="inline-flex items-center gap-2 rounded-xl border bg-white/90 px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
           <Loader2 size={14} className="animate-spin" />
           Loading document...
@@ -107,7 +155,7 @@ const DocumentViewer = () => {
 
   if (isError) {
     return (
-      <section className="flex min-h-[58vh] items-center justify-center p-1">
+      <section className="flex h-[calc(100vh-116px)] items-center justify-center p-1">
         <div className="max-w-md rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
           <p className="font-semibold">{error?.data?.message || "Unable to open document."}</p>
           <button
@@ -130,7 +178,7 @@ const DocumentViewer = () => {
         <iframe
           title={document?.originalName || "Document preview"}
           src={viewUrl}
-          className="h-full min-h-[62vh] w-full bg-white"
+          className="h-full w-full bg-white"
         />
       );
     }
@@ -140,9 +188,9 @@ const DocumentViewer = () => {
     }
 
     return (
-      <div className="flex min-h-[62vh] items-center justify-center p-6 text-center">
-        <div className="max-w-md">
-          <FileText className="mx-auto text-slate-400" size={34} />
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className="max-w-xs">
+          <FileText className="mx-auto text-slate-400" size={32} />
           <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
             Preview not available for {document?.extension?.toUpperCase() || "this file type"}.
           </h2>
@@ -155,7 +203,7 @@ const DocumentViewer = () => {
             rel="noreferrer"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={13} />
             Open Document
           </a>
         </div>
@@ -164,57 +212,49 @@ const DocumentViewer = () => {
   };
 
   return (
-    <section className="flex h-full min-h-[calc(100vh-116px)] flex-col gap-3 p-1">
-      <div className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-              aria-label="Go back"
-            >
-              <ArrowLeft size={15} />
-            </button>
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-              <FileText size={15} />
+    <section className="flex h-[calc(100vh-116px)] flex-col gap-2 overflow-hidden p-1 lg:flex-row">
+      {/* Document panel — 60% on desktop */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/30 lg:flex-[3]">
+        {/* Slim document header */}
+        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={14} />
+          </button>
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+            <FileText size={12} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
+              {document?.originalName || "Document"}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+            <span>{formatBytes(document?.sizeBytes)}</span>
+            {document?.extension && (
+              <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono font-medium uppercase dark:border-slate-700 dark:bg-slate-800">
+                {document.extension.replace(".", "")}
+              </span>
+            )}
+            <span className="hidden sm:inline">
+              {formatDate(document?.uploadedAt || document?.createdAt)}
             </span>
-            <div className="min-w-0">
-              <h1 className="break-all text-sm font-semibold text-slate-950 dark:text-slate-100">
-                {document?.originalName || "Document"}
-              </h1>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>{formatBytes(document?.sizeBytes)}</span>
-                <span>{document?.extension?.toUpperCase() || "FILE"}</span>
-                <span>Uploaded {formatDate(document?.uploadedAt || document?.createdAt)}</span>
-              </div>
-            </div>
           </div>
+        </div>
 
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <a
-              href={viewUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              <ExternalLink size={14} />
-              Open
-            </a>
-            <a
-              href={viewUrl}
-              download={document?.originalName}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
-            >
-              <Download size={14} />
-              Download
-            </a>
-          </div>
+        {/* Preview content */}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {renderPreview()}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/30">
-        {renderPreview()}
+      {/* Chat panel — 40% on desktop */}
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/30 lg:flex-[2]">
+        <ChatPanel />
       </div>
     </section>
   );

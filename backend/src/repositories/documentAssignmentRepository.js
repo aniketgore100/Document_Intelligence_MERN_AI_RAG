@@ -115,6 +115,24 @@ export class DocumentAssignmentRepository {
     );
   }
 
+  revokeUserAssignmentsByDepartments({ documentId, departmentIds, revokedBy }) {
+    return DocumentAssignment.updateMany(
+      {
+        document: documentId,
+        department: { $in: departmentIds.map(toObjectId) },
+        targetType: 'USER',
+        status: 'active',
+      },
+      {
+        $set: {
+          status: 'revoked',
+          revokedBy,
+          revokedAt: new Date(),
+        },
+      },
+    );
+  }
+
   async syncDepartmentAssignments({ document, organizationId, departmentIds, assignedBy }) {
     const desiredIds = new Set(departmentIds.map(String));
     const existing = await DocumentAssignment.find({
