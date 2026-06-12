@@ -4,7 +4,7 @@ import { DocumentAssignmentRepository } from '../repositories/documentAssignment
 import { DepartmentRepository } from '../repositories/departmentRepository.js';
 import { OrganizationMembershipRepository } from '../repositories/organizationMembershipRepository.js';
 import { DOCUMENT_UPLOAD } from '../constants/documents.js';
-import { createUploadUrl, buildDocumentKey, headObject, deleteObject } from '../utils/s3.js';
+import { createUploadUrl, createViewUrl, buildDocumentKey, headObject, deleteObject } from '../utils/s3.js';
 import { ROLES } from '../constants/roles.js';
 import mongoose from 'mongoose';
 import dotenv from "dotenv";
@@ -478,6 +478,69 @@ export class DocumentService {
         totalPages: Math.ceil(total / safeLimit) || 1,
         hasNextPage: skip + documents.length < total,
         hasPrevPage: safePage > 1,
+      },
+    };
+  }
+
+  async ensureDocumentViewAccess({ auth, documentId }) {
+    this.requireOrganizationContext(auth);
+
+    const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
+    if (!document || document.status !== DOCUMENT_UPLOAD.STATUSES.ACTIVE) {
+      const error = new Error('Document not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (auth.roleName === ROLES.ORG_ADMIN) {
+      return document;
+    }
+
+    if (auth.roleName === ROLES.DEPT_ADMIN) {
+      this.requireDepartmentContext(auth);
+      const departmentAssignments = await this.documentAssignmentRepository.listActiveByDocument({
+        documentId,
+        targetType: 'DEPARTMENT',
+      });
+      const hasDepartmentAccess = departmentAssignments.some(
+        (assignment) => String(assignment.department?._id || assignment.department) === String(auth.departmentId),
+      );
+      if (hasDepartmentAccess) return document;
+    }
+
+    if (auth.roleName === ROLES.USER) {
+      const userAssignments = await this.documentAssignmentRepository.listActiveByDocument({
+        documentId,
+        targetType: 'USER',
+      });
+      const hasUserAccess = userAssignments.some(
+        (assignment) => String(assignment.user?._id || assignment.user) === String(auth.userId),
+      );
+      if (hasUserAccess) return document;
+    }
+
+    const error = new Error('Document access denied');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  async getDocumentView({ auth, documentId }) {
+    const document = await this.ensureDocumentViewAccess({ auth, documentId });
+    const safeFileName = String(document.originalName || 'document').replaceAll('"', '');
+    const signedUrl = await createViewUrl({
+      bucket: document.bucket,
+      key: document.s3Key,
+      responseContentType: document.mimeType,
+      responseContentDisposition: `inline; filename="${safeFileName}"`,
+      expiresIn: 900,
+    });
+
+    return {
+      document: document.toPublic(),
+      view: {
+        url: signedUrl.signedUrl,
+        method: 'GET',
+        expiresInSeconds: 900,
       },
     };
   }

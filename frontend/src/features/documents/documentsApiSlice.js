@@ -58,6 +58,14 @@ export const documentsApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Documents'],
     }),
 
+    getDocumentView: builder.query({
+      query: ({ id }) => ({
+        url: `documents/${id}/view`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, { id }) => [{ type: 'Documents', id }],
+    }),
+
     assignDocumentDepartments: builder.mutation({
       query: ({ id, departmentIds }) => ({
         url: `documents/${id}/assign-departments`,
@@ -82,6 +90,7 @@ export const {
   useAssignDocumentDepartmentsMutation,
   useAssignDocumentUsersMutation,
   useGetDocumentsQuery,
+  useGetDocumentViewQuery,
   useLazyGetDocumentAssignmentTargetsQuery,
   useCreateDocumentUploadUrlMutation,
   useCompleteDocumentUploadMutation,

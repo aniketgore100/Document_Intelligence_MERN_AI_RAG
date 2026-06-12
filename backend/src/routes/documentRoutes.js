@@ -13,6 +13,7 @@ import {
   completeUpload,
   getAssignmentTargets,
   listDocuments,
+  getDocumentView,
   deleteDocument,
 } from '../controllers/document.js';
 
@@ -75,6 +76,16 @@ router.get('/', protect,
     query('status').optional().isString().trim(),
   ]),
   listDocuments,
+);
+
+router.get(
+  '/:id/view',
+  protect,
+  authorizeDocumentList,
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+  ]),
+  getDocumentView,
 );
 
 router.get(

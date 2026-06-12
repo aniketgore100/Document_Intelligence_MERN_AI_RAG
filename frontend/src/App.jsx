@@ -14,6 +14,7 @@ import OrgAdminSettings from './pages/OrgAdminSettings';
 import Organizations from './pages/Organizations';
 import Department from './pages/Department';
 import Profile from './pages/Profile';
+import DocumentViewer from './pages/DocumentViewer';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -35,6 +36,7 @@ const App = () => {
           <Route element={<RoleProtectedRoute allowedRoles={[ROLES.ORG_ADMIN, ROLES.DEPT_ADMIN]} />}>
             <Route path="/documents" element={<OrgAdminDocuments />} />
           </Route>
+          <Route path="/documents/:id" element={<DocumentViewer />} />
           <Route path="/settings" element={<OrgAdminSettings />} />
           <Route path="/profile" element={<Profile />} />
 

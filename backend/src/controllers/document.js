@@ -65,6 +65,22 @@ export const listDocuments = async (req, res, next) => {
   }
 };
 
+export const getDocumentView = async (req, res, next) => {
+  try {
+    const result = await documentService.getDocumentView({
+      auth: req.auth,
+      documentId: req.params.id,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
 export const getAssignmentTargets = async (req, res, next) => {
   try {
     const result = await documentService.getAssignmentTargets({

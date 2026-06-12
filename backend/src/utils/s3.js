@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 let s3Client;
@@ -37,6 +37,19 @@ export const createUploadUrl = async ({ bucket, key, contentType, expiresIn = 90
     Key: key,
     ContentType: contentType,
     ServerSideEncryption: 'AES256',
+  });
+  const signedUrl = await getSignedUrl(client, command, { expiresIn });
+
+  return { signedUrl };
+};
+
+export const createViewUrl = async ({ bucket, key, responseContentType, responseContentDisposition, expiresIn = 900 }) => {
+  const client = getS3Client();
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ...(responseContentType ? { ResponseContentType: responseContentType } : {}),
+    ...(responseContentDisposition ? { ResponseContentDisposition: responseContentDisposition } : {}),
   });
   const signedUrl = await getSignedUrl(client, command, { expiresIn });
 
