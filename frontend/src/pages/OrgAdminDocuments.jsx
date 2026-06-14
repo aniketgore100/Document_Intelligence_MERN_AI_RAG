@@ -22,6 +22,7 @@ import {
   useDeleteDocumentMutation,
   useGetDocumentsQuery,
   useLazyGetDocumentAssignmentTargetsQuery,
+  useProcessDocumentMutation,
 } from '../features/documents/documentsApiSlice';
 import { ROLES } from '../constants/roles';
 
@@ -135,6 +136,7 @@ const OrgAdminDocuments = () => {
   const [createUploadUrl] = useCreateDocumentUploadUrlMutation();
   const [completeUpload] = useCompleteDocumentUploadMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
+  const [processDocument, { isLoading: isProcessingDocument }] = useProcessDocumentMutation();
   const [loadAssignmentTargets, { isFetching: isLoadingAssignmentTargets }] =
     useLazyGetDocumentAssignmentTargetsQuery();
   const [assignDocumentDepartments, { isLoading: isAssigningDepartments }] =
@@ -496,6 +498,16 @@ const OrgAdminDocuments = () => {
     }
   };
 
+  const handleProcess = async (id) => {
+    try {
+      setActionError('');
+      await processDocument({ id }).unwrap();
+      setOpenActionsId(null);
+      await refetch();
+    } catch (error) {
+      setActionError(error?.data?.message || error?.message || 'Processing failed.');
+    }
+  };
 
 
   const rows = documents
@@ -645,7 +657,18 @@ const OrgAdminDocuments = () => {
                           </button>
 
                           {openActionsId === document.id && (
-                            <div className="absolute right-0 top-9 z-20 w-36 rounded-xl border bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                            <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                              {document.status === 'ACTIVE' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleProcess(document.id)}
+                                  disabled={isProcessingDocument}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                                >
+                                  <Check size={13} />
+                                  Process
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 onClick={() => {

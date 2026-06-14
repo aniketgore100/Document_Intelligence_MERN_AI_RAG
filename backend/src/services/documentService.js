@@ -3,10 +3,12 @@ import { DocumentRepository } from '../repositories/documentRepository.js';
 import { DocumentAssignmentRepository } from '../repositories/documentAssignmentRepository.js';
 import { DepartmentRepository } from '../repositories/departmentRepository.js';
 import { OrganizationMembershipRepository } from '../repositories/organizationMembershipRepository.js';
-import { DOCUMENT_UPLOAD } from '../constants/documents.js';
+import { DOCUMENT_UPLOAD, DOCUMENT_PROCESSING } from '../constants/documents.js';
 import { createUploadUrl, createViewUrl, buildDocumentKey, headObject, deleteObject } from '../utils/s3.js';
+import { sendProcessingJob } from '../utils/sqs.js';
 import { ROLES } from '../constants/roles.js';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -581,6 +583,66 @@ export class DocumentService {
     };
   }
 
+  async processDocument({ auth, documentId }) {
+    this.requireOrgAdmin(auth);
+    this.requireOrganizationContext(auth);
+
+    const document = await this.documentRepository.findByIdForOrg(documentId, auth.organizationId);
+    if (!document || document.status === DOCUMENT_UPLOAD.STATUSES.DELETED) {
+      const error = new Error('Document not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (document.status !== DOCUMENT_UPLOAD.STATUSES.ACTIVE) {
+      const error = new Error('Document must be ACTIVE to process');
+      error.statusCode = 422;
+      throw error;
+    }
+
+    const currentProcessingStatus = document.processingStatus || DOCUMENT_PROCESSING.STATUSES.NOT_PROCESSED;
+    if (![DOCUMENT_PROCESSING.STATUSES.NOT_PROCESSED, DOCUMENT_PROCESSING.STATUSES.FAILED].includes(currentProcessingStatus)) {
+      const error = new Error('Document is already queued or processing');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const queueUrl = process.env.AWS_SQS_QUEUE_URL;
+    if (!queueUrl) {
+      const error = new Error('AWS_SQS_QUEUE_URL is required');
+      error.statusCode = 500;
+      throw error;
+    }
+
+    const jobId = crypto.randomUUID();
+    document.processingStatus = DOCUMENT_PROCESSING.STATUSES.QUEUED;
+    document.processingError = null;
+    await this.documentRepository.save(document);
+
+    try {
+      await sendProcessingJob({
+        queueUrl,
+        jobId,
+        documentId: String(document._id),
+        organizationId: String(auth.organizationId),
+        s3Key: document.s3Key,
+      });
+    } catch (error) {
+      document.processingStatus = DOCUMENT_PROCESSING.STATUSES.FAILED;
+      document.processingError = error?.message || String(error);
+      await this.documentRepository.save(document);
+      const responseError = new Error('Failed to queue document for processing');
+      responseError.statusCode = 503;
+      throw responseError;
+    }
+
+    return {
+      jobId,
+      documentId: String(document._id),
+      processingStatus: document.processingStatus,
+    };
+  }
+
   async getAssignmentTargets({ auth, documentId }) {
     if (auth.roleName === ROLES.ORG_ADMIN) {
       this.requireOrgAdmin(auth);
@@ -826,6 +888,25 @@ export class DocumentService {
     };
   }
 
+  async updateProcessingStatus({ documentId, processingStatus, processingError }) {
+    const document = await this.documentRepository.findById(documentId);
+    if (!document) {
+      const error = new Error('Document not found');
+      error.statusCode = 404;
+      throw error;
+    }
 
+    document.processingStatus = processingStatus;
+    if (processingError) {
+      document.processingError = processingError;
+    }
+    await this.documentRepository.save(document);
+
+    return {
+      documentId: String(document._id),
+      processingStatus: document.processingStatus,
+      processingError: document.processingError,
+    };
+  }
 
 }

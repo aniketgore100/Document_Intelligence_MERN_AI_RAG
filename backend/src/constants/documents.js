@@ -17,3 +17,13 @@ export const DOCUMENT_UPLOAD = Object.freeze({
     FAILED: 'FAILED',
   }),
 });
+
+export const DOCUMENT_PROCESSING = Object.freeze({
+  STATUSES: Object.freeze({
+    NOT_PROCESSED: 'NOT_PROCESSED',
+    QUEUED: 'QUEUED',
+    PROCESSING: 'PROCESSING',
+    COMPLETED: 'COMPLETED',
+    FAILED: 'FAILED',
+  }),
+});

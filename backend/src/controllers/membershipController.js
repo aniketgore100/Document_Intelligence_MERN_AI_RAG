@@ -15,6 +15,7 @@ export const updateMembershipPermissions = async (req, res, next) => {
       membership: result.toPublic ? result.toPublic() : result,
     });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };

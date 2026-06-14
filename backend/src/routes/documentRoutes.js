@@ -11,6 +11,8 @@ import {
   assignUsers,
   createUploadSession,
   completeUpload,
+  processDocument,
+  processingWebhook,
   getAssignmentTargets,
   listDocuments,
   getDocumentView,
@@ -66,7 +68,15 @@ router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   completeUpload,
 );
 
-
+router.post(
+  '/:id/process',
+  protect,
+  authorize(ACTIONS.DOCUMENT.PROCESS),
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+  ]),
+  processDocument,
+);
 
 router.get('/', protect,
   authorizeDocumentList,
@@ -132,6 +142,15 @@ router.delete(
     param('id').isMongoId().withMessage('Document id must be valid'),
   ]),
   deleteDocument,
+);
+
+router.post(
+  '/:id/processing-webhook',
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+    body('processingStatus').trim().notEmpty().withMessage('processingStatus is required'),
+  ]),
+  processingWebhook,
 );
 
 export default router;

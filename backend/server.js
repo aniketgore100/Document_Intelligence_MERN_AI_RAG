@@ -4,7 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-// import { serverAdapter } from './src/config/bullBoard.js';
 import connectDB from './src/config/db.js';
 import authRoutes from './src/routes/authRoutes.js';
 import organizationRoutes from './src/routes/organizationRoutes.js';
@@ -48,8 +47,6 @@ app.options(/.*/, cors(corsOptions));
 app.use(helmet());
 
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
-// app.use('/admin/queues', serverAdapter.getRouter());
-
 app.use(morgan('dev', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 
 const authLimiter = rateLimit({

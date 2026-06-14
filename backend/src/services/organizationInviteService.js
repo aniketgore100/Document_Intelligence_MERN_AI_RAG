@@ -7,7 +7,6 @@ import { RoleRepository } from "../repositories/roleRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
 import { ROLES } from "../constants/roles.js";
 import { getDefaultPermissionsForRole } from "../constants/permissions.js";
-// import { inviteEmailQueue } from "../queue/inviteQueue.js";
 
 
 
@@ -240,16 +239,6 @@ export class OrganizationInviteService {
 
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const inviteLink = `${clientUrl}/invite/accept?token=${rawToken}`;
-    // await inviteEmailQueue.add(
-    //   "invite.send",
-    //   {
-    //     inviteId: String(invite._id),
-    //     rawToken,
-    //   },
-    //   {
-    //     jobId: `invite-${invite._id}-send-v1`,
-    //   }
-    // );
 
     console.log("Invite link :: ", inviteLink);
 

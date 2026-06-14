@@ -62,6 +62,18 @@ const documentSchema = new mongoose.Schema(
       default: 'PENDING',
       index: true,
     },
+    processingStatus: {
+      type: String,
+      enum: ['NOT_PROCESSED', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED'],
+      default: 'NOT_PROCESSED',
+      index: true,
+    },
+    processingError: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 1000,
+    },
     version: {
       type: Number,
       default: 1,
@@ -105,6 +117,7 @@ const documentSchema = new mongoose.Schema(
 
 documentSchema.index({ organization: 1, status: 1, createdAt: -1 });
 documentSchema.index({ organization: 1, department: 1, status: 1, createdAt: -1 });
+documentSchema.index({ organization: 1, processingStatus: 1, createdAt: -1 });
 
 documentSchema.methods.toPublic = function () {
   return {
@@ -117,6 +130,8 @@ documentSchema.methods.toPublic = function () {
     mimeType: this.mimeType,
     sizeBytes: this.sizeBytes,
     status: this.status,
+    processingStatus: this.processingStatus,
+    processingError: this.processingError,
     version: this.version,
     checksum: this.checksum,
     metadata: this.metadata ? Object.fromEntries(this.metadata) : {},

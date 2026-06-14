@@ -17,6 +17,7 @@ export const ACTIONS = Object.freeze({
     DELETE: 'document:delete',
     ASSIGN: 'document:assign',
     READ_ASSIGNED: 'document:read:assigned',
+    PROCESS: 'document:process',
   }),
 
   USER : Object.freeze({

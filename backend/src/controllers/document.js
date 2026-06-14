@@ -43,7 +43,21 @@ export const completeUpload = async (req, res, next) => {
   }
 };
 
+export const processDocument = async (req, res, next) => {
+  try {
+    const result = await documentService.processDocument({
+      auth: req.auth,
+      documentId: req.params.id,
+    });
 
+    return res.status(202).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
 
 export const listDocuments = async (req, res, next) => {
   try {
@@ -138,6 +152,48 @@ export const deleteDocument = async (req, res, next) => {
     const result = await documentService.deleteDocument({
       auth: req.auth,
       documentId: req.params.id,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
+export const processingWebhook = async (req, res, next) => {
+  try {
+
+    console.log("webhook received ::", req);
+    const apiKey = req.headers['x-api-key'];
+    const expectedKey = process.env.MERN_WEBHOOK_API_KEY;
+
+    if (!expectedKey) {
+      const error = new Error('Webhook API key not configured');
+      error.statusCode = 500;
+      throw error;
+    }
+
+    if (!apiKey || apiKey !== expectedKey) {
+      const error = new Error('Unauthorized');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const { documentId, processingStatus, processingError } = req.body;
+
+    if (!documentId || !processingStatus) {
+      const error = new Error('Missing required fields: documentId, processingStatus');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const result = await documentService.updateProcessingStatus({
+      documentId,
+      processingStatus,
+      processingError,
     });
 
     return res.status(200).json(result);

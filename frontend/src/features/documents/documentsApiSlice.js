@@ -41,7 +41,14 @@ export const documentsApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Documents', 'Dashboard'],
     }),
 
-    
+    processDocument: builder.mutation({
+      query: ({ id }) => ({
+        url: `documents/${id}/process`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Documents', 'Dashboard'],
+    }),
+
     deleteDocument: builder.mutation({
       query: ({ id }) => ({
         url: `documents/${id}`,
@@ -94,5 +101,6 @@ export const {
   useLazyGetDocumentAssignmentTargetsQuery,
   useCreateDocumentUploadUrlMutation,
   useCompleteDocumentUploadMutation,
+  useProcessDocumentMutation,
   useDeleteDocumentMutation,
 } = documentsApiSlice;
