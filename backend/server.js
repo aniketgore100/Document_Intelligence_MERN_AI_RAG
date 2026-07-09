@@ -12,6 +12,7 @@ import departmentRoutes from './src/routes/departmentRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import membershipRoutes from './src/routes/membershipRoutes.js';
 import documentRoutes from './src/routes/documentRoutes.js';
+import workspaceRoutes from './src/routes/workspaceRoutes.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import logger from './src/utils/logger.js';
 import dotenv from 'dotenv';
@@ -84,6 +85,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/workspaces', workspaceRoutes);
 
 // ── Error handling ─────────────────────────────────────────────────────────
 app.use(notFound);

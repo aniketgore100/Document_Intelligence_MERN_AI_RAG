@@ -43,6 +43,14 @@ export const departmentsApiSlice = apiSlice.injectEndpoints({
         }),
         providesTags: (result, error, { deptId }) => [{ type: "Department", id: `${deptId}-analytics` }],
       }),
+
+      getMemberAnalytics: builder.query({
+        query: ({ orgId, deptId, memberId }) => ({
+          url: `departments/department/${orgId}/${deptId}/members/${memberId}/analytics`,
+          method: "GET",
+        }),
+        providesTags: (result, error, { memberId }) => [{ type: "Department", id: `member-${memberId}` }],
+      }),
   }),
 });
 
@@ -51,4 +59,5 @@ export const {
   useCreateDepartmentMutation,
   useGetDepartmentByIdQuery,
   useGetDepartmentAnalyticsQuery,
+  useGetMemberAnalyticsQuery,
 } = departmentsApiSlice;

@@ -4,6 +4,7 @@ import { OrganizationMembershipRepository } from "../repositories/organizationMe
 import { DocumentAssignmentRepository } from "../repositories/documentAssignmentRepository.js";
 import { DocumentRepository } from "../repositories/documentRepository.js";
 import { OrganizationInviteService } from "./organizationInviteService.js";
+import { RagQueryRepository } from "../repositories/ragQueryRepository.js";
 import { ROLES } from "../constants/roles.js";
 import { DOCUMENT_UPLOAD } from "../constants/documents.js";
 
@@ -45,12 +46,14 @@ export class DepartmentService {
     documentAssignmentRepository = new DocumentAssignmentRepository(),
     documentRepository = new DocumentRepository(),
     organizationInviteService = new OrganizationInviteService(),
+    ragQueryRepository = new RagQueryRepository(),
   } = {}) {
     this.departmentRepository = departmentRepository;
     this.organizationMembershipRepository = organizationMembershipRepository;
     this.documentAssignmentRepository = documentAssignmentRepository;
     this.documentRepository = documentRepository;
     this.organizationInviteService = organizationInviteService;
+    this.ragQueryRepository = ragQueryRepository;
   }
 
   toPublicDepartment(department) {
@@ -415,6 +418,52 @@ async getDepartmentById({ orgId, deptId, userId, roleName }) {
   };
 }
 
+async getMemberAnalytics({ orgId, deptId, memberId, requestingUserId, roleName }) {
+  await this.getDepartmentById({ orgId, deptId, userId: requestingUserId, roleName });
+
+  const membership = await this.organizationMembershipRepository.findActiveMemberInDepartment({
+    userId: memberId,
+    departmentId: deptId,
+    organizationId: orgId,
+  });
+
+  if (!membership) {
+    const err = new Error("Member not found in this department");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const [totalDeptDocs, queriesByDocument] = await Promise.all([
+    this.documentAssignmentRepository.countActiveDepartmentDocuments({
+      organizationId: orgId,
+      departmentId: deptId,
+    }),
+    this.ragQueryRepository.countSuccessfulByUserPerDocument({
+      userId: memberId,
+      organizationId: orgId,
+    }),
+  ]);
+
+  const totalQueries = queriesByDocument.reduce((sum, d) => sum + d.count, 0);
+
+  return {
+    member: {
+      id: memberId,
+      name: membership.user?.name || null,
+      email: membership.user?.email || null,
+      roleName: membership.roleName,
+      status: membership.status,
+      joinedAt: membership.joinedAt || membership.createdAt,
+      permissions: membership.permissions || [],
+    },
+    totals: {
+      documents: totalDeptDocs,
+      queries: totalQueries,
+    },
+    queriesByDocument,
+  };
+}
+
 async getDepartmentAnalytics({ orgId, deptId, userId, roleName }) {
   const department = await this.getDepartmentById({ orgId, deptId, userId, roleName });
   const organizationId = toId(department.organization);
@@ -426,6 +475,8 @@ async getDepartmentAnalytics({ orgId, deptId, userId, roleName }) {
     totalOrganizationDocs,
     dailyUsersRaw,
     dailyDocumentsRaw,
+    totalQueries,
+    queriesByUser,
   ] = await Promise.all([
     this.organizationMembershipRepository.countDepartmentMembers({
       organizationId,
@@ -457,6 +508,8 @@ async getDepartmentAnalytics({ orgId, deptId, userId, roleName }) {
       departmentId: deptId,
       days: ANALYTICS_DAYS,
     }),
+    this.ragQueryRepository.countSuccessfulByDepartment({ organizationId, departmentId: deptId }),
+    this.ragQueryRepository.countSuccessfulByUsersInDepartment({ organizationId, departmentId: deptId }),
   ]);
 
   const workloadPercent = totalOrganizationDocs > 0
@@ -475,7 +528,9 @@ async getDepartmentAnalytics({ orgId, deptId, userId, roleName }) {
       documents: totalDepartmentDocs,
       organizationDocuments: totalOrganizationDocs,
       workloadPercent,
+      totalQueries,
     },
+    queriesByUser,
     daily: {
       usersAdded: normalizeDailySeries(dailyUsersRaw, ANALYTICS_DAYS),
       documentsAdded: normalizeDailySeries(dailyDocumentsRaw, ANALYTICS_DAYS),

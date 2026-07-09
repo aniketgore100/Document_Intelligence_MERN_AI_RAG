@@ -6,8 +6,7 @@ import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
-router.post(
-  '/register',
+router.post('/register',
   validate([
     body('name').trim().isLength({ min: 2, max: 60 }).withMessage('Name must be 2–60 characters'),
     body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
@@ -16,8 +15,7 @@ router.post(
   register,
 );
 
-router.post(
-  '/login',
+router.post('/login',
   validate([
     body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
     body('password').notEmpty().withMessage('Password required'),
@@ -27,8 +25,7 @@ router.post(
 
 router.get('/me', protect, getMe);
 
-router.patch(
-  '/me',
+router.patch( '/me',
   protect,
   validate([
     body('name')

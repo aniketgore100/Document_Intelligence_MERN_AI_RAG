@@ -90,6 +90,25 @@ export const getDepartmentById = async(req, res, next) => {
   }
 }
 
+export const getMemberAnalytics = async (req, res, next) => {
+  try {
+    const { orgId, deptId, memberId } = req.params;
+    const result = await departmentService.getMemberAnalytics({
+      orgId,
+      deptId,
+      memberId,
+      requestingUserId: req.user?._id || req.user?.id || null,
+      roleName: req.auth?.roleName || null,
+    });
+    return res.status(200).json({
+      message: "Member analytics fetched successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getDepartmentAnalytics = async(req, res, next) => {
   try {
     const { orgId, deptId } = req.params;

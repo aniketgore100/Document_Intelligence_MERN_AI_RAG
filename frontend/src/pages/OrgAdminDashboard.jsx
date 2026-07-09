@@ -2,6 +2,7 @@ import {
   FilePlus2,
   FileText,
   Layers3,
+  MessageSquare,
   Plus,
   UserPlus,
   Users,
@@ -51,6 +52,12 @@ const OrgAdminDashboard = () => {
         helper: `Assigned in last ${rangeDays} days`,
         icon: FilePlus2,
       },
+      {
+        title: "Total Queries",
+        value: formatCount(data?.totals?.totalQueries),
+        helper: "Across entire organization",
+        icon: MessageSquare,
+      },
     ],
     [data, rangeDays]
   );
@@ -81,7 +88,7 @@ const OrgAdminDashboard = () => {
         ) : null}
 
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {cards.map((card) => {
               const Icon = card.icon;
               return (

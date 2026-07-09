@@ -1,4 +1,4 @@
-import { Check, FileText, Mail, Save, Shield, User, UserCheck, Users } from "lucide-react";
+import { Check, FileText, Mail, MessageSquare, Save, Shield, User, UserCheck, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
@@ -256,7 +256,7 @@ const Department = () => {
             </div>
           ) : (
             <div className="space-y-2.5">
-              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
                 <MetricCard
                   title="Total Users"
                   value={analytics?.totals?.users ?? 0}
@@ -277,6 +277,13 @@ const Department = () => {
                   helper="Assigned to department"
                   icon={FileText}
                   tone="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                />
+                <MetricCard
+                  title="Total Queries"
+                  value={analytics?.totals?.totalQueries ?? 0}
+                  helper="All department RAG queries"
+                  icon={MessageSquare}
+                  tone="bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
                 />
                 <WorkloadDonut
                   percent={workloadPercent}

@@ -2,6 +2,7 @@ import { DepartmentRepository } from "../repositories/departmentRepository.js";
 import { DocumentAssignmentRepository } from "../repositories/documentAssignmentRepository.js";
 import { DocumentRepository } from "../repositories/documentRepository.js";
 import { OrganizationMembershipRepository } from "../repositories/organizationMembershipRepository.js";
+import { RagQueryRepository } from "../repositories/ragQueryRepository.js";
 import { ROLES } from "../constants/roles.js";
 
 const ANALYTICS_DAYS = 7;
@@ -43,11 +44,13 @@ export class DashboardService {
     documentAssignmentRepository = new DocumentAssignmentRepository(),
     documentRepository = new DocumentRepository(),
     organizationMembershipRepository = new OrganizationMembershipRepository(),
+    ragQueryRepository = new RagQueryRepository(),
   } = {}) {
     this.departmentRepository = departmentRepository;
     this.documentAssignmentRepository = documentAssignmentRepository;
     this.documentRepository = documentRepository;
     this.organizationMembershipRepository = organizationMembershipRepository;
+    this.ragQueryRepository = ragQueryRepository;
   }
 
   async getOrgAdminSummary({ userId, days = ANALYTICS_DAYS }) {
@@ -71,6 +74,8 @@ export class DashboardService {
       membersTotal,
       dailyUsersAdded,
       dailyDocumentsAdded,
+      totalQueries,
+      queriesByDepartment,
     ] = await Promise.all([
       this.documentRepository.countByOrganization({ organizationId }),
       this.departmentRepository.countByOrganization({ organizationId }),
@@ -88,6 +93,8 @@ export class DashboardService {
         organizationId,
         days: analyticsDays,
       }),
+      this.ragQueryRepository.countSuccessfulByOrganization({ organizationId }),
+      this.ragQueryRepository.countSuccessfulByDepartments({ organizationId }),
     ]);
 
     return {
@@ -100,7 +107,9 @@ export class DashboardService {
         documents: documentsTotal,
         members: membersTotal,
         departments: departmentsTotal,
+        totalQueries,
       },
+      queriesByDepartment,
       daily: {
         rangeDays: analyticsDays,
         usersAdded: normalizeDailySeries(dailyUsersAdded, analyticsDays),

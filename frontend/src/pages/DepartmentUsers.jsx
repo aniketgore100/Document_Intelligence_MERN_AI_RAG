@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Shield, UserPlus, X } from "lucide-react";
+import { Check, FileText, MessageSquare, Shield, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useGetDepartmentsQuery } from "../features/departments/departmentsApiSlice";
+import { useGetMemberAnalyticsQuery } from "../features/departments/departmentsApiSlice";
 import {
   useCreateDepartmentUserInviteMutation,
   useGetDepartmentUsersQuery,
@@ -27,9 +28,192 @@ const formatTimeRemaining = (expiresAt, nowTs) => {
   return `${minutes}m ${seconds}s left`;
 };
 
+const getInitials = (name) => {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+};
+
+const MemberProfileDrawer = ({ member, orgId, deptId, onClose }) => {
+  const { data, isLoading, isError } = useGetMemberAnalyticsQuery(
+    { orgId, deptId, memberId: member.userId },
+    { skip: !orgId || !deptId || !member.userId }
+  );
+
+  const analytics = data || null;
+  const maxQueryCount = analytics?.queriesByDocument?.length
+    ? Math.max(...analytics.queriesByDocument.map((d) => d.count))
+    : 1;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex justify-end"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/30" />
+      <motion.div
+        className="relative flex h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 340, damping: 38 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-slate-100 p-4 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white">
+              {getInitials(member.name)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {member.name || "—"}
+              </p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{member.email || "—"}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border p-1.5 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Meta */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+          <span className="inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-300">
+            <Shield size={10} />
+            {member.roleName || "User"}
+          </span>
+          <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+            {member.status || "active"}
+          </span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Joined {member.joinedAt}
+          </span>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+
+          {/* Permissions */}
+          {Array.isArray(member.permissions) && member.permissions.length > 0 ? (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                Permissions
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {member.permissions.map((p) => (
+                  <span
+                    key={p}
+                    className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-0.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <Check size={10} className="text-emerald-500" />
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Stats */}
+          {isError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+              Failed to load analytics.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                    <FileText size={14} />
+                    <p className="text-xs font-medium">Documents</p>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {isLoading ? "—" : analytics?.totals?.documents ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">In department</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                    <MessageSquare size={14} />
+                    <p className="text-xs font-medium">Queries</p>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {isLoading ? "—" : analytics?.totals?.queries ?? 0}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">Total by this user</p>
+                </div>
+              </div>
+
+              {/* Queries by document */}
+              <div>
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                  Queries per document
+                </p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+                    ))}
+                  </div>
+                ) : analytics?.queriesByDocument?.length ? (
+                  <div className="space-y-2">
+                    {analytics.queriesByDocument.map((doc) => {
+                      const barWidth = Math.max(4, Math.round((doc.count / maxQueryCount) * 100));
+                      return (
+                        <div
+                          key={String(doc.documentId)}
+                          className="rounded-lg border border-slate-100 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-800/40"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <p
+                              className="min-w-0 truncate text-xs font-medium text-slate-700 dark:text-slate-200"
+                              title={doc.documentName}
+                            >
+                              {doc.documentName}
+                            </p>
+                            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                              {doc.count}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-700">
+                            <div
+                              className="h-1.5 rounded-full bg-blue-500"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    No queries performed yet.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const DepartmentUsers = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isPermissionOpen, setIsPermissionOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
   const [email, setEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
   const [permissionError, setPermissionError] = useState("");
@@ -76,6 +260,7 @@ const DepartmentUsers = () => {
       type: "active",
       key: member.membershipId || member.id || member._id,
       membershipId: member.membershipId || member.id || member._id,
+      userId: member.user?.id || member.user?._id,
       name: member.user?.name || "-",
       email: member.user?.email || "-",
       roleName: member.roleName || member.role?.name || member.user?.roleName || member.user?.role?.name,
@@ -228,7 +413,12 @@ const DepartmentUsers = () => {
                 rows.map((row) => (
                   <div
                     key={row.key}
-                    className="grid grid-cols-12 items-center gap-2 border-b px-4 py-3 text-sm transition-colors duration-150 hover:bg-slate-100/55 dark:hover:bg-slate-800/30"
+                    className={`grid grid-cols-12 items-center gap-2 border-b px-4 py-3 text-sm transition-colors duration-150 hover:bg-slate-100/55 dark:hover:bg-slate-800/30 ${row.type === "active" ? "cursor-pointer" : ""}`}
+                    onClick={
+                      row.type === "active"
+                        ? () => setSelectedMember(row)
+                        : undefined
+                    }
                   >
                     <p className="col-span-4 font-medium text-slate-800 dark:text-slate-100">
                       {row.name || "-"}
@@ -251,7 +441,10 @@ const DepartmentUsers = () => {
                       {row.type === "active" && canManagePermissions ? (
                         <button
                           type="button"
-                          onClick={() => openPermissionEditor(row)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPermissionEditor(row);
+                          }}
                           className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/70"
                         >
                           <Shield size={13} />
@@ -260,7 +453,10 @@ const DepartmentUsers = () => {
                       ) : row.canReinvite ? (
                         <button
                           type="button"
-                          onClick={() => openInviteModal(row.email)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openInviteModal(row.email);
+                          }}
                           className="rounded-md border px-2 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30"
                         >
                           Invite Again
@@ -278,6 +474,16 @@ const DepartmentUsers = () => {
       ) : null}
 
       <AnimatePresence>
+        {selectedMember ? (
+          <MemberProfileDrawer
+            key={selectedMember.userId}
+            member={selectedMember}
+            orgId={organizationId}
+            deptId={departmentId}
+            onClose={() => setSelectedMember(null)}
+          />
+        ) : null}
+
         {isPermissionOpen ? (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"

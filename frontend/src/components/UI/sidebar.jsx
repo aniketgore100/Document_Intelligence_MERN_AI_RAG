@@ -1,11 +1,12 @@
 import {
+  BookOpen,
   Building2,
   FileText,
+  FolderOpen,
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  BookOpen,
   User,
   Users,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import { ROLES } from "../../constants/roles";
 
 const userMenuItems = [
   { name: "Knowledge Base", icon: BookOpen, path: "/home" },
+  { name: "Workspaces", icon: FolderOpen, path: "/workspaces" },
   { name: "Profile", icon: User, path: "/profile" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
@@ -21,6 +23,7 @@ const userMenuItems = [
 const orgAdminMenuItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/home" },
   { name: "Documents", icon: FileText, path: "/documents" },
+  { name: "Workspaces", icon: FolderOpen, path: "/workspaces" },
   { name: "Departments", icon: Building2, path: "/departments" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
@@ -34,14 +37,14 @@ const deptAdminMenuItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/home" },
   { name: "Members", icon: Users, path: "/department/users" },
   { name: "Documents", icon: FileText, path: "/documents" },
+  { name: "Workspaces", icon: FolderOpen, path: "/workspaces" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const isMenuItemActive = (pathname, path) => {
   if (!path) return false;
-  if (path === "/departments") {
-    return pathname === path || pathname.startsWith("/department/");
-  }
+  if (path === "/departments") return pathname === path || pathname.startsWith("/department/");
+  if (path === "/workspaces") return pathname === path || pathname.startsWith("/workspaces/");
   return pathname === path;
 };
 

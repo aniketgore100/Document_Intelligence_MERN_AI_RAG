@@ -186,6 +186,22 @@ export class OrganizationMembershipRepository {
       .populate("organization", "name slug");
   }
 
+  findAnyActiveMembership({ userId }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      status: 'active',
+    }).populate('organization', 'name slug');
+  }
+
+  findActiveMemberInDepartment({ userId, departmentId, organizationId }) {
+    return OrganizationMembership.findOne({
+      user: userId,
+      department: departmentId,
+      organization: organizationId,
+      status: "active",
+    }).populate("user", "name email");
+  }
+
   save(membershipDoc) {
     return membershipDoc.save();
   }

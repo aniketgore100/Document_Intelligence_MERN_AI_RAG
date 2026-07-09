@@ -15,6 +15,8 @@ import Organizations from './pages/Organizations';
 import Department from './pages/Department';
 import Profile from './pages/Profile';
 import DocumentViewer from './pages/DocumentViewer';
+import WorkspacesPage from './pages/WorkspacesPage';
+import WorkspaceEditor from './pages/WorkspaceEditor';
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
@@ -37,6 +39,8 @@ const App = () => {
             <Route path="/documents" element={<OrgAdminDocuments />} />
           </Route>
           <Route path="/documents/:id" element={<DocumentViewer />} />
+          <Route path="/workspaces" element={<WorkspacesPage />} />
+          <Route path="/workspaces/:id" element={<WorkspaceEditor />} />
           <Route path="/settings" element={<OrgAdminSettings />} />
           <Route path="/profile" element={<Profile />} />
 

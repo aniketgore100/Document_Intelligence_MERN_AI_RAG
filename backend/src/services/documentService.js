@@ -601,8 +601,13 @@ export class DocumentService {
     }
 
     const currentProcessingStatus = document.processingStatus || DOCUMENT_PROCESSING.STATUSES.NOT_PROCESSED;
-    if (![DOCUMENT_PROCESSING.STATUSES.NOT_PROCESSED, DOCUMENT_PROCESSING.STATUSES.FAILED].includes(currentProcessingStatus)) {
-      const error = new Error('Document is already queued or processing');
+    if (currentProcessingStatus === DOCUMENT_PROCESSING.STATUSES.COMPLETED) {
+      const error = new Error('Document is already embedded and cannot be re-processed');
+      error.statusCode = 409;
+      throw error;
+    }
+    if ([DOCUMENT_PROCESSING.STATUSES.QUEUED, DOCUMENT_PROCESSING.STATUSES.PROCESSING].includes(currentProcessingStatus)) {
+      const error = new Error('Document is already queued for processing');
       error.statusCode = 409;
       throw error;
     }

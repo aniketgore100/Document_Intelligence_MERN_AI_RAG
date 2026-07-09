@@ -9,16 +9,11 @@ import { ROLES } from "../constants/roles.js";
 import { getDefaultPermissionsForRole } from "../constants/permissions.js";
 
 
-
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const DEFAULT_INVITE_TTL_HOURS = 1 / 60;
 const toId = (value) => value?._id || value;
 
-
-
-
 export class OrganizationInviteService {
-
 
   constructor({
     inviteRepository = new OrganizationInviteRepository(),

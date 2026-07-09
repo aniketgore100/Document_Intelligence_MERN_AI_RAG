@@ -11,12 +11,12 @@ import {
   updateDepartment,
   getDepartmentById,
   getDepartmentAnalytics,
+  getMemberAnalytics,
 } from "../controllers/departmentController.js";
 
 const router = Router();
 
-router.post(
-  "/create",
+router.post("/create",
   protect,
   authorize(ACTIONS.DEPARTMENT.CREATE),
   validate([
@@ -35,9 +35,8 @@ router.post(
   ]),
   createDepartment
 );
-
-router.get(
-  "/list",
+ 
+router.get("/list",
   protect,
   authorize(ACTIONS.DEPARTMENT.READ),
   validate([
@@ -57,8 +56,7 @@ router.get(
   listDepartments
 );
 
-router.patch(
-  "/:id",
+router.patch("/:id",
   protect,
   authorize(ACTIONS.DEPARTMENT.UPDATE),
   validate([
@@ -76,8 +74,7 @@ router.patch(
   updateDepartment
 );
 
-router.delete(
-  "/:id",
+router.delete("/:id",
   protect,
   authorize(ACTIONS.DEPARTMENT.DELETE),
   validate([param("id").isMongoId().withMessage("Invalid department id")]),
@@ -99,5 +96,16 @@ router.get("/department/:orgId/:deptId/analytics", protect,
       param("deptId").isMongoId().withMessage("Invalid department id"),
     ]), getDepartmentAnalytics
 )
+
+router.get("/department/:orgId/:deptId/members/:memberId/analytics",
+  protect,
+  authorize(ACTIONS.DEPARTMENT.READ),
+  validate([
+    param("orgId").isMongoId().withMessage("Invalid organization id"),
+    param("deptId").isMongoId().withMessage("Invalid department id"),
+    param("memberId").isMongoId().withMessage("Invalid member id"),
+  ]),
+  getMemberAnalytics
+);
 
 export default router;

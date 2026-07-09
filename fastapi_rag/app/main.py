@@ -1,12 +1,23 @@
 import time
 from fastapi import FastAPI, Depends
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .logging_config import logger
 from .sqs_worker import SQSWorker
 from .auth import require_api_key
+from .rag_router import router as rag_router
 
 app = FastAPI(title='RAG Worker')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_methods=["POST", "GET"],
+    allow_headers=["Content-Type", "x-api-key"],
+)
+
+app.include_router(rag_router)
 worker = SQSWorker()
 
 

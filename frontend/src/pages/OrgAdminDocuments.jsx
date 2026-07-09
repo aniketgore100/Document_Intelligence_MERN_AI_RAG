@@ -7,6 +7,7 @@ import {
   Loader2,
   MoreVertical,
   Plus,
+  Sparkles,
   Trash2,
   UploadCloud,
   X,
@@ -100,6 +101,48 @@ const formatUploadTime = (value) => {
 const getInitials = (value) => {
   const words = String(value || 'NA').trim().split(/\s+/).filter(Boolean);
   return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'NA';
+};
+
+const PROCESSING_BLOCKED = new Set(['QUEUED', 'PROCESSING', 'COMPLETED']);
+
+const ProcessingStatusBadge = ({ status }) => {
+  if (status === 'COMPLETED') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Sparkles size={9} />
+        Embedded
+      </span>
+    );
+  }
+  if (status === 'QUEUED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+        <Loader2 size={10} className="animate-spin" />
+        Queued
+      </span>
+    );
+  }
+  if (status === 'PROCESSING') {
+    return (
+      <div className="space-y-0.5">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+          <Loader2 size={10} className="animate-spin" />
+          Processing
+        </span>
+        <div className="h-1 w-20 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-blue-500" />
+        </div>
+      </div>
+    );
+  }
+  if (status === 'FAILED') {
+    return (
+      <span className="text-[10px] font-medium text-rose-600 dark:text-rose-400">
+        Failed
+      </span>
+    );
+  }
+  return <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>;
 };
 
 const badgeColors = [
@@ -570,6 +613,9 @@ const OrgAdminDocuments = () => {
                 <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                   Upload Time
                 </th>
+                <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-left text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                  AI Status
+                </th>
                 {canAssignDocs ? (
                   <th className="whitespace-nowrap border border-slate-200 px-4 py-2 text-right text-xs font-semibold  tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-300">
                     Assign
@@ -586,7 +632,7 @@ const OrgAdminDocuments = () => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)} className="px-4 py-4 text-xs muted">
+                  <td colSpan={4 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)} className="px-4 py-4 text-xs muted">
                     Loading...
                   </td>
                 </tr>
@@ -618,6 +664,10 @@ const OrgAdminDocuments = () => {
 
                     <td className="whitespace-nowrap border border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                       {document.uploadedLabel}
+                    </td>
+
+                    <td className="whitespace-nowrap border border-slate-200 px-4 py-2 dark:border-slate-700">
+                      <ProcessingStatusBadge status={document.processingStatus} />
                     </td>
 
                     {canAssignDocs ? (
@@ -658,7 +708,7 @@ const OrgAdminDocuments = () => {
 
                           {openActionsId === document.id && (
                             <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                              {document.status === 'ACTIVE' ? (
+                              {document.status === 'ACTIVE' && !PROCESSING_BLOCKED.has(document.processingStatus) ? (
                                 <button
                                   type="button"
                                   onClick={() => handleProcess(document.id)}
@@ -668,6 +718,11 @@ const OrgAdminDocuments = () => {
                                   <Check size={13} />
                                   Process
                                 </button>
+                              ) : document.processingStatus === 'COMPLETED' ? (
+                                <span className="flex w-full items-center gap-2 px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 opacity-60 cursor-not-allowed">
+                                  <Sparkles size={13} />
+                                  Embedded
+                                </span>
                               ) : null}
                               <button
                                 type="button"
@@ -691,7 +746,7 @@ const OrgAdminDocuments = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan={3 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)}
+                    colSpan={4 + (canAssignDocs ? 1 : 0) + (canManageDocs ? 1 : 0)}
                     className="px-4 py-6 text-center text-xs muted"
                   >
                     No documents uploaded yet.

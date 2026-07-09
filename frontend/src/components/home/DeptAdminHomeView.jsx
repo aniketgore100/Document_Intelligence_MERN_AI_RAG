@@ -1,4 +1,4 @@
-import { FileText, UserCheck, Users } from "lucide-react";
+import { FileText, MessageSquare, UserCheck, Users } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useGetMeQuery } from "../../features/auth/authApiSlice";
 import { useGetDepartmentAnalyticsQuery } from "../../features/departments/departmentsApiSlice";
@@ -179,7 +179,7 @@ const DeptAdminHomeView = () => {
             </div>
           ) : (
             <div className="space-y-2.5">
-              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
                 <MetricCard
                   title="Total Users"
                   value={analytics?.totals?.users ?? 0}
@@ -202,6 +202,14 @@ const DeptAdminHomeView = () => {
                   helper="Assigned to department"
                   icon={FileText}
                   tone="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                  isLoading={isLoading}
+                />
+                <MetricCard
+                  title="Total Queries"
+                  value={analytics?.totals?.totalQueries ?? 0}
+                  helper="All department RAG queries"
+                  icon={MessageSquare}
+                  tone="bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
                   isLoading={isLoading}
                 />
                 <WorkloadDonut percent={workloadPercent} isLoading={isLoading} />

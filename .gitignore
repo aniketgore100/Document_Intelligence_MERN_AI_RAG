@@ -45,3 +45,9 @@ frontend/build/
 # ======================
 coverage/
 uploads/
+
+# ======================
+# 🔹 CHROMA VECTOR DB
+# ======================
+fastapi_rag/chroma_db/
+**/chroma_db/

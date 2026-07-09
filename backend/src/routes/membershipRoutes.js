@@ -8,8 +8,7 @@ import { updateMembershipPermissions } from "../controllers/membershipController
 
 const router = Router();
 
-router.patch(
-  "/:id/permissions",
+router.patch("/:id/permissions",
   protect,
   authorize(ACTIONS.ACCESS.UPDATE),
   validate([

@@ -17,6 +17,7 @@ import {
   listDocuments,
   getDocumentView,
   deleteDocument,
+  queryDocument,
 } from '../controllers/document.js';
 
 const router = Router();
@@ -50,7 +51,6 @@ router.post('/upload-url', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   createUploadSession,
 );
 
-
 router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   validate([
     param('id').isMongoId().withMessage('Document id must be valid'),
@@ -68,8 +68,7 @@ router.post('/:id/complete', protect, authorize(ACTIONS.DOCUMENT.CREATE),
   completeUpload,
 );
 
-router.post(
-  '/:id/process',
+router.post('/:id/process',
   protect,
   authorize(ACTIONS.DOCUMENT.PROCESS),
   validate([
@@ -88,8 +87,7 @@ router.get('/', protect,
   listDocuments,
 );
 
-router.get(
-  '/:id/view',
+router.get( '/:id/view',
   protect,
   authorizeDocumentList,
   validate([
@@ -98,8 +96,7 @@ router.get(
   getDocumentView,
 );
 
-router.get(
-  '/:id/assignment-targets',
+router.get('/:id/assignment-targets',
   protect,
   authorize(ACTIONS.DOCUMENT.ASSIGN),
   validate([
@@ -108,8 +105,7 @@ router.get(
   getAssignmentTargets,
 );
 
-router.patch(
-  '/:id/assign-departments',
+router.patch('/:id/assign-departments',
   protect,
   authorize(ACTIONS.DOCUMENT.ASSIGN),
   validate([
@@ -120,8 +116,7 @@ router.patch(
   assignDepartments,
 );
 
-router.patch(
-  '/:id/assign-users',
+router.patch('/:id/assign-users',
   protect,
   authorize(ACTIONS.DOCUMENT.ASSIGN),
   validate([
@@ -132,10 +127,17 @@ router.patch(
   assignUsers,
 );
 
+router.post('/:id/query',
+  protect,
+  authorizeDocumentList,
+  validate([
+    param('id').isMongoId().withMessage('Document id must be valid'),
+    body('query').isString().trim().isLength({ min: 1, max: 2000 }).withMessage('query must be 1-2000 characters'),
+  ]),
+  queryDocument,
+);
 
-
-router.delete(
-  '/:id',
+router.delete('/:id',
   protect,
   authorize(ACTIONS.DOCUMENT.DELETE),
   validate([
@@ -144,8 +146,7 @@ router.delete(
   deleteDocument,
 );
 
-router.post(
-  '/:id/processing-webhook',
+router.post('/:id/processing-webhook',
   validate([
     param('id').isMongoId().withMessage('Document id must be valid'),
     body('processingStatus').trim().notEmpty().withMessage('processingStatus is required'),
